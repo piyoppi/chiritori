@@ -4,9 +4,7 @@ pub mod time_limited_remover;
 use std::collections::HashMap;
 use crate::parser::{Content, ContentPart};
 use crate::parser;
-use crate::element_parser::Element;
 use self::remove_marker_builder::RemoveMarkerBuilder;
-use crate::tokenizer::Token;
 
 #[derive(Debug, PartialEq)]
 pub struct RemoveMarker {
@@ -14,76 +12,56 @@ pub struct RemoveMarker {
     pub byte_end: usize,
 }
 
-fn remove_marker(contents: Vec<ContentPart>, builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>) -> Vec<RemoveMarker> {
+fn remove_marker(contents: &Vec<ContentPart>, builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>) -> Vec<RemoveMarker> {
     contents.iter()
-        .fold((vec![], 0, None, None), |mut acc: (Vec<RemoveMarker>, usize, Option<&Token>, Option<&Element>), c: &ContentPart| {
-            if !matches!(c.kind, parser::ContentKind::Element(_)) {
-                return acc;
-            }
+        .fold(vec![], |mut acc, c| {
+            if let parser::ContentPart::Element(el) = c {
+                let builder = builder_map.get(el.start_element.name.as_str());
+                let marker = builder.map(|builder| builder.create_remove_marker(&el.start_token, &el.start_element, &el.end_token)).flatten();
 
-            let el = match &c.kind {
-                parser::ContentKind::Element(e) => e,
-                _ => panic!("Should not happen"),
-            };
-
-            if el.name.starts_with("/") && acc.1 > 0 {
-                let builder = builder_map.get(el.name.trim_start_matches('/'));
-
-                if builder.is_some() {
-                    acc.1 = acc.1 - 1;
-                    if acc.1 == 0 {
-                        let builder = builder.unwrap();
-                        let marker = builder.create_remove_marker(acc.2.unwrap(), acc.3.unwrap(), &c.token);
-                        if marker.is_some() {
-                            acc.0.push(marker.unwrap());
-                        }
-                    }
-                }
-            } else {
-                let builder = builder_map.contains_key(el.name.as_str());
-                if builder {
-                    if acc.1 == 0 {
-                        acc.2 = Some(&c.token);
-                        acc.3 = Some(&el);
-                    }
-                    acc.1 = acc.1 + 1;
+                if marker.is_some() {
+                    acc.push(marker.unwrap());
+                } else {
+                    remove_marker(&el.children, builder_map).into_iter().for_each(|m| acc.push(m));
                 }
             }
 
             acc
         })
-        .0
 }
 
 #[test]
 fn test_remove_marker() {
-    let content = "
-<div>
-    <!-- time-limited to='2021-12-31 23:50:00' -->
-    <h1>Hello, World!</h1>
-    <!-- /time-limited -->
-</div>";
-
-    let contents = parser::parse(content, "<!--", "-->");
+    //             0         1         2         3        4
+    // byte_pos:   012345678901234567890123456789012-5678901234
+    let content = "foo<tl to='2000-01-01 00:00:00'>あ</tl>fuga";
+    let contents = parser::parse(content, "<", ">");
 
     let mut builder_map: HashMap<&str, Box<dyn RemoveMarkerBuilder>> = HashMap::new();
-    builder_map.insert("time-limited", Box::new(time_limited_remover::TimeLimitedRemover {
+    builder_map.insert("tl", Box::new(time_limited_remover::TimeLimitedRemover {
         current_time: chrono::Local::now(),
         time_offset: "+00:00".to_string(),
     }));
     assert_eq!(
-        remove_marker(contents.parts, &builder_map),
+        remove_marker(&contents.parts, &builder_map),
         vec![
             RemoveMarker {
-                byte_start: 11,
-                byte_end: 111,
+                byte_start: 3,
+                byte_end: 40,
             },
         ]
+    );
+
+    let content = "foo<baz>a";
+    let contents = parser::parse(content, "<", ">");
+    assert_eq!(
+        remove_marker(&contents.parts, &builder_map),
+        vec![]
     );
 }
 
 pub fn remove(content: Content, builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>) -> (String, Vec<RemoveMarker>) {
-    let markers = remove_marker(content.parts, builder_map);
+    let markers = remove_marker(&content.parts, builder_map);
     let mut new_content = content.raw.to_string();
 
     for marker in markers.iter().rev() {

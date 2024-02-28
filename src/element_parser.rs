@@ -3,7 +3,7 @@ use crate::tokenizer;
 #[derive(Debug, PartialEq)]
 pub struct Element {
     pub name: String,
-    pub attrs: Vec<Attribute>,        
+    pub attrs: Vec<Attribute>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -12,7 +12,7 @@ pub struct Attribute {
     pub value: Option<String>,
 }
 
-pub fn parse(token: tokenizer::Token) -> Option<Element> {
+pub fn parse(token: &tokenizer::Token) -> Option<Element> {
     #[derive(PartialEq)]
     enum State {
         NameBegin,
@@ -24,7 +24,7 @@ pub fn parse(token: tokenizer::Token) -> Option<Element> {
         ParseError
     }
 
-    match token.kind {
+    match &token.kind {
         tokenizer::TokenKind::Element(element) => {
             let values = token.value
                 .trim_start_matches(&element.delimiter_start)
@@ -99,14 +99,14 @@ pub fn parse(token: tokenizer::Token) -> Option<Element> {
             }
 
             let name = values.0[0].0.to_string();
-            
+
             let attrs: Vec<Attribute> = values.0[1..].iter().map(|s| {
                 Attribute {
                     name: s.0.to_string(),
                     value: s.1.clone()
                 }
             }).collect();
-            
+
             Some(Element {
                 name,
                 attrs,
@@ -132,11 +132,11 @@ fn test_parse() {
         byte_end: 18,
     };
 
-     assert_eq!(parse(token), Some(Element {
-         name: "hello-world".to_string(),
+     assert_eq!(parse(&token), Some(Element {
+        name: "hello-world".to_string(),
          attrs: vec![],
      }));
-    
+
     let token = tokenizer::Token {
         kind: tokenizer::TokenKind::Element(
             tokenizer::ElementToken {
@@ -151,7 +151,7 @@ fn test_parse() {
         byte_end: 48,
     };
 
-    assert_eq!(parse(token), Some(Element {
+    assert_eq!(parse(&token), Some(Element {
         name: "hello-world".to_string(),
         attrs: vec![
             Attribute {

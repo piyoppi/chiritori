@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use clap::Parser;
 use formatter::Formatter;
+use std::collections::HashSet;
 mod tokenizer;
 mod element_parser;
 mod parser;
@@ -63,7 +64,7 @@ fn main() {
         parser::parse(
             &content,
             args.time_limited_delimiter_start.as_str(),
-            args.time_limited_delimiter_end.as_str()
+            args.time_limited_delimiter_end.as_str(),
         ),
     &builder_map);
 

@@ -1,4 +1,4 @@
-use std::{str::Chars};
+use std::str::Chars;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum TokenKind<'a, 'b> {
@@ -148,6 +148,13 @@ fn test_tokenize() {
         ]
     );
     assert_eq!(
+        tokenize(&"[r][r]", "[", "]"),
+        vec![
+            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
+            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 3, byte_start: 3, end: 6, byte_end: 6}
+        ]
+    );
+    assert_eq!(
         tokenize(&"[r]こんにちは[r]b", "[", "]"),
         vec![
             Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
@@ -179,14 +186,22 @@ fn test_tokenize() {
     );
 }
 
+fn check_delimiter_start<'a, 'b>(c: &char, delimiter_start: &'a str) -> State<'a, 'b> {
+    let mut delimiter_start_chars = delimiter_start.chars();
+
+    if *c == delimiter_start_chars.next().unwrap() {
+       State::DelimiterStart(delimiter_start_chars)
+    } else {
+       State::Text
+    }
+}
+
 fn get_state<'a, 'b, 'c>(c: &char, delimiter_start: &'b str, delimiter_end: &'c str, state: State<'b, 'c>) -> (Option<TokenKind<'b, 'c>>, State<'b, 'c>) {
     match state {
         State::Text => {
-            let mut delimiter_start_chars = delimiter_start.chars();
-            if *c == delimiter_start_chars.next().unwrap() {
-                (Some(TokenKind::Text), State::DelimiterStart(delimiter_start_chars))
-            } else {
-                (None, State::Text)
+            match check_delimiter_start(c, delimiter_start) {
+                State::DelimiterStart(delimiter_start_chars) => (Some(TokenKind::Text), State::DelimiterStart(delimiter_start_chars)),
+                _ => (None, State::Text)
             }
         },
         State::DelimiterStart(mut current_chars) => {
@@ -225,7 +240,7 @@ fn get_state<'a, 'b, 'c>(c: &char, delimiter_start: &'b str, delimiter_end: &'c 
                     }
                 },
                 None => {
-                    (Some(TokenKind::Element(ElementToken {delimiter_start, delimiter_end})), State::Text)
+                    (Some(TokenKind::Element(ElementToken {delimiter_start, delimiter_end})), check_delimiter_start(c, delimiter_start))
                 }
             }
         }

@@ -1,16 +1,24 @@
 use crate::tokenizer;
 use crate::element_parser;
+use std::collections::HashSet;
 
 #[derive(Debug, PartialEq)]
-pub enum ContentKind {
-    Element(element_parser::Element),
-    Text,
+pub enum ContentPart<'a, 'b, 'c> {
+    Element(Element<'a, 'b, 'c>),
+    Text(Text<'a, 'b, 'c>),
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ContentPart<'a, 'b, 'c> {
+pub struct Element<'a, 'b, 'c> {
+    pub start_element: element_parser::Element,
+    pub start_token: tokenizer::Token<'a, 'b, 'c>,
+    pub end_token: tokenizer::Token<'a, 'b, 'c>,
+    pub children: Vec<ContentPart<'a, 'b, 'c>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Text<'a, 'b, 'c> {
     pub token: tokenizer::Token<'a, 'b, 'c>,
-    pub kind: ContentKind
 }
 
 #[derive(Debug, PartialEq)]
@@ -19,92 +27,230 @@ pub struct Content<'a, 'b, 'c> {
     pub parts: Vec<ContentPart<'a, 'b, 'c>>,
 }
 
-pub fn parse<'a, 'b, 'c>(content: &'a str, delimiter_start: &'b str, delimiter_end: &'c str) -> Content<'a, 'b, 'c> {
-    let tokens = tokenizer::tokenize(content, delimiter_start, delimiter_end);
+fn tree<'a, 'b, 'c, 'd>(
+    tokens: &'d Vec<tokenizer::Token<'a, 'b, 'c>>,
+    cursor: usize,
+    parts: &mut Vec<ContentPart<'a, 'b, 'c>>,
+    parent_el: Option<&element_parser::Element>,
+) -> (usize, Option<&'d tokenizer::Token<'a, 'b, 'c>>) {
+    let mut cursor = cursor;
 
-    let content_part = tokens.iter().map(|t| {
-        ContentPart {
-            token: t.clone(),
-            kind: match t.kind {
-                tokenizer::TokenKind::Element(_) => {
-                    match element_parser::parse(t.clone()) {
-                        Some(e) => ContentKind::Element(e),
-                        None => ContentKind::Text,
-                    }
-                },
-                _ => ContentKind::Text,
-            }
+    loop {
+        let t = tokens.get(cursor);
+        cursor = cursor + 1;
+
+        if t.is_none() {
+            break (cursor, None);
         }
-    }).collect();
+
+        let t: &tokenizer::Token<'a, 'b, 'c> = t.unwrap();
+
+        enum State<'a, 'b, 'c> {
+            Closed,
+            Content(Vec<ContentPart<'a, 'b, 'c>>),
+        }
+
+        let part: State<'a, 'b, 'c> = match t.kind {
+            tokenizer::TokenKind::Element(_) => {
+                element_parser::parse(t).map_or(
+                    State::Content(
+                        vec![
+                            ContentPart::Text(
+                                Text {
+                                    token: t.clone()
+                                }
+                            )
+                        ]
+                    ),
+                    |el| {
+                        if let Some(parent_el) = parent_el {
+                            if el.name.starts_with("/") && parent_el.name == el.name.trim_start_matches("/") {
+                                return State::Closed;
+                            }
+                        }
+
+                        let mut children = vec![];
+                        let (new_cursor, end_token) = tree(tokens, cursor, &mut children, Some(&el));
+
+                        cursor = new_cursor;
+
+                        if let Some(end) = end_token {
+                            State::Content(
+                                vec![
+                                    ContentPart::Element(
+                                        Element {
+                                            start_element: el,
+                                            start_token: t.clone(),
+                                            end_token: end.clone(),
+                                            children: children,
+                                        }
+                                    )
+                                ]
+                            )
+                        } else {
+                            let mut parts = vec![
+                                ContentPart::Text(
+                                    Text {
+                                        token: t.clone()
+                                    }
+                                )
+                            ];
+                            parts.extend(children);
+
+                            State::Content(parts)
+                        }
+                    }
+                )
+            },
+            _ => State::Content(vec![ContentPart::Text(Text {token: t.clone()})]),
+        };
+
+        match part {
+            State::Closed => break (cursor, Some(t)),
+            State::Content(parsed) => parts.extend(parsed),
+        }
+    }
+}
+
+pub fn parse<'a, 'b, 'c>(content: &'a str, delimiter_start: &'b str, delimiter_end: &'c str) -> Content<'a, 'b, 'c> {
+    let tokens: Vec<tokenizer::Token<'a, 'b, 'c>> = tokenizer::tokenize(content, delimiter_start, delimiter_end);
+    let mut content_parts: Vec<ContentPart<'a, 'b, 'c>> = vec![];
+
+    tree(&tokens, 0, &mut content_parts, None);
 
     Content {
         raw: content,
-        parts: content_part,
+        parts: content_parts,
     }
 }
 
 #[test]
 fn test_parse() {
-    let content = "
-<div>
-  <!-- time-limited to='2021-12-31' -->
-  <h1>Hello, World!</h1>
-</div>";
+    //             0         1          2
+    // pos:        012345678901234567 89012345678
+    //             |  |            ||||    |   |
+    //             0  |      1     |||2    |   |
+    // byte_pos:   012345678901234567-01234567890
+    let content = "foo<bar baz='13'>あ</bar>fuga";
 
     assert_eq!(
-        parse(content, "<!--", "-->"),
+        parse(content, "<", ">"),
         Content {
             raw: content,
             parts: vec![
-                ContentPart {
+                ContentPart::Text(Text {
                     token: tokenizer::Token {
+                        value: "foo",
                         kind: tokenizer::TokenKind::Text,
-                        value: "\n<div>\n  ",
                         start: 0,
                         byte_start: 0,
-                        end: 9,
-                        byte_end: 9,
+                        end: 3,
+                        byte_end: 3,
+                    }
+                }),
+                ContentPart::Element(Element {
+                    start_element: element_parser::Element {
+                        name: "bar".to_string(),
+                        attrs: vec![element_parser::Attribute {
+                            name: "baz".to_string(),
+                            value: Some("13".to_string())
+                        }]
                     },
-                    kind: ContentKind::Text,
-                },
-                ContentPart {
-                    token: tokenizer::Token {
-                        kind: tokenizer::TokenKind::Element(
-                            tokenizer::ElementToken {
-                                delimiter_start: "<!--",
-                                delimiter_end: "-->",
+                    start_token: tokenizer::Token {
+                        value: "<bar baz='13'>",
+                        kind: tokenizer::TokenKind::Element(tokenizer::ElementToken {
+                            delimiter_start: "<",
+                            delimiter_end: ">",
+                        }),
+                        start: 3,
+                        byte_start: 3,
+                        end: 17,
+                        byte_end: 17,
+                    },
+                    end_token: tokenizer::Token {
+                        value: "</bar>",
+                        kind: tokenizer::TokenKind::Element(tokenizer::ElementToken {
+                            delimiter_start: "<",
+                            delimiter_end: ">",
+                        }),
+                        start: 18,
+                        byte_start: 20,
+                        end: 24,
+                        byte_end: 26,
+                    },
+                    children: vec![
+                        ContentPart::Text(Text {
+                            token: tokenizer::Token {
+                                value: "あ",
+                                kind: tokenizer::TokenKind::Text,
+                                start: 17,
+                                byte_start: 17,
+                                end: 18,
+                                byte_end: 20,
                             }
-                        ),
-                        value: "<!-- time-limited to='2021-12-31' -->",
-                        start: 9,
-                        byte_start: 9,
-                        end: 46,
-                        byte_end: 46,
-                    },
-                    kind: ContentKind::Element(
-                        element_parser::Element {
-                            name: "time-limited".to_string(),
-                            attrs: vec![
-                                element_parser::Attribute {
-                                    name: "to".to_string(),
-                                    value: Some("2021-12-31".to_string()),
-                                },
-                            ],
-                        }
-                    ),
-                },
-                ContentPart {
+                        }),
+                    ],
+                }),
+                ContentPart::Text(Text {
                     token: tokenizer::Token {
+                        value: "fuga",
                         kind: tokenizer::TokenKind::Text,
-                        value: "\n  <h1>Hello, World!</h1>\n</div>",
-                        start: 46,
-                        byte_start: 46,
-                        end: 78,
-                        byte_end: 78,
-                    },
-                    kind: ContentKind::Text,
-                },
+                        start: 24,
+                        byte_start: 26,
+                        end: 28,
+                        byte_end: 30,
+                    }
+                }),
             ]
         }
-    )
+    );
+
+    //             0         1         2
+    // pos:        0123456789012345678901
+    //             |  |           |    |
+    //             0  |      1    |    |
+    // byte_pos:   0123456789012345679012
+    let content = "foo<bar baz='13'>fuga";
+
+    assert_eq!(
+        parse(content, "<", ">"),
+        Content {
+            raw: content,
+            parts: vec![
+                ContentPart::Text(Text {
+                    token: tokenizer::Token {
+                        value: "foo",
+                        kind: tokenizer::TokenKind::Text,
+                        start: 0,
+                        byte_start: 0,
+                        end: 3,
+                        byte_end: 3,
+                    }
+                }),
+                ContentPart::Text(Text {
+                    token: tokenizer::Token {
+                        value: "<bar baz='13'>",
+                        kind: tokenizer::TokenKind::Element(tokenizer::ElementToken {
+                            delimiter_start: "<",
+                            delimiter_end: ">",
+                        }),
+                        start: 3,
+                        byte_start: 3,
+                        end: 17,
+                        byte_end: 17,
+                    }
+                }),
+                ContentPart::Text(Text {
+                    token: tokenizer::Token {
+                        value: "fuga",
+                        kind: tokenizer::TokenKind::Text,
+                        start: 17,
+                        byte_start: 17,
+                        end: 21,
+                        byte_end: 21,
+                    }
+                }),
+            ]
+        }
+    );
 }
