@@ -113,78 +113,6 @@ pub fn tokenize<'a, 'b, 'c>(source: &'a str, delimiter_start: &'b str, delimiter
         acc
     })
 }
- #[test]
-fn test_tokenize() {
-    let default_element = ElementToken {delimiter_start: "[", delimiter_end: "]"};
-    assert_eq!(
-        tokenize(&"r", "[", "]"),
-        vec![Token {value: "r", kind: TokenKind::Text, start: 0, byte_start: 0, end: 1, byte_end: 1}]
-    );
-    assert_eq!(
-        tokenize(&"[r]", "[", "]"),
-        vec![Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3}]
-    );
-    assert_eq!(
-        tokenize(&"aaa[r]g", "[", "]"),
-        vec![
-            Token {value: "aaa", kind :TokenKind::Text, start: 0, byte_start: 0, end: 3, byte_end: 3},
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 3, byte_start: 3, end: 6, byte_end: 6},
-            Token {value: "g", kind :TokenKind::Text, start: 6, byte_start: 6, end: 7, byte_end: 7}
-        ]
-    );
-    assert_eq!(
-        tokenize(&"[r]g", "[", "]"),
-        vec![
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
-            Token {value: "g", kind :TokenKind::Text, start: 3, byte_start: 3, end: 4, byte_end: 4}
-        ]
-    );
-    assert_eq!(
-        tokenize(&"[r]g[r]", "[", "]"),
-        vec![
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
-            Token {value: "g", kind :TokenKind::Text, start: 3, byte_start: 3, end: 4, byte_end: 4},
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 4, byte_start: 4, end: 7, byte_end: 7}
-        ]
-    );
-    assert_eq!(
-        tokenize(&"[r][r]", "[", "]"),
-        vec![
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 3, byte_start: 3, end: 6, byte_end: 6}
-        ]
-    );
-    assert_eq!(
-        tokenize(&"[r]こんにちは[r]b", "[", "]"),
-        vec![
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
-            Token {value: "こんにちは", kind :TokenKind::Text, start: 3, byte_start: 3, end: 8, byte_end: 18},
-            Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 8, byte_start: 18, end: 11, byte_end: 21},
-            Token {value: "b", kind :TokenKind::Text, start: 11, byte_start: 21, end: 12, byte_end: 22}
-        ]
-    );
-    assert_eq!(
-        tokenize(&"r[g", "[", "]"),
-        vec![
-            Token {value: "r[g", kind :TokenKind::Text, start: 0, byte_start: 0, end: 3, byte_end: 3}
-        ]
-    );
-    assert_eq!(
-        tokenize(&"<!--r-->gb", "<!--", "-->"),
-        vec![
-            Token {value: "<!--r-->", kind :TokenKind::Element(ElementToken {delimiter_start: "<!--", delimiter_end: "-->"}), start: 0, byte_start: 0, end: 8, byte_end: 8},
-            Token {value: "gb", kind :TokenKind::Text, start: 8, byte_start: 8, end: 10, byte_end: 10}
-        ]
-    );
-    assert_eq!(
-        tokenize(&"foo<div><!--r-->gb", "<!--", "-->"),
-        vec![
-            Token {value: "foo<div>", kind :TokenKind::Text, start: 0, byte_start: 0, end: 8, byte_end: 8},
-            Token {value: "<!--r-->", kind :TokenKind::Element(ElementToken {delimiter_start: "<!--", delimiter_end: "-->"}), start: 8, byte_start: 8, end: 16, byte_end: 16},
-            Token {value: "gb", kind :TokenKind::Text, start: 16, byte_start: 16, end: 18, byte_end: 18}
-        ]
-    );
-}
 
 fn check_delimiter_start<'a, 'b>(c: &char, delimiter_start: &'a str) -> State<'a, 'b> {
     let mut delimiter_start_chars = delimiter_start.chars();
@@ -244,5 +172,87 @@ fn get_state<'a, 'b, 'c>(c: &char, delimiter_start: &'b str, delimiter_end: &'c 
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+     #[test]
+    fn test_tokenize() {
+        let default_element = ElementToken {delimiter_start: "[", delimiter_end: "]"};
+        assert_eq!(
+            tokenize(&"r", "[", "]"),
+            vec![Token {value: "r", kind: TokenKind::Text, start: 0, byte_start: 0, end: 1, byte_end: 1}]
+        );
+        assert_eq!(
+            tokenize(&"[r]", "[", "]"),
+            vec![Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3}]
+        );
+        assert_eq!(
+            tokenize(&"[r]", "[", "]"),
+            vec![Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3}]
+        );
+        assert_eq!(
+            tokenize(&"aaa[r]g", "[", "]"),
+            vec![
+                Token {value: "aaa", kind :TokenKind::Text, start: 0, byte_start: 0, end: 3, byte_end: 3},
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 3, byte_start: 3, end: 6, byte_end: 6},
+                Token {value: "g", kind :TokenKind::Text, start: 6, byte_start: 6, end: 7, byte_end: 7}
+            ]
+        );
+        assert_eq!(
+            tokenize(&"[r]g", "[", "]"),
+            vec![
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
+                Token {value: "g", kind :TokenKind::Text, start: 3, byte_start: 3, end: 4, byte_end: 4}
+            ]
+        );
+        assert_eq!(
+            tokenize(&"[r]g[r]", "[", "]"),
+            vec![
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
+                Token {value: "g", kind :TokenKind::Text, start: 3, byte_start: 3, end: 4, byte_end: 4},
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 4, byte_start: 4, end: 7, byte_end: 7}
+            ]
+        );
+        assert_eq!(
+            tokenize(&"[r][r]", "[", "]"),
+            vec![
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 3, byte_start: 3, end: 6, byte_end: 6}
+            ]
+        );
+        assert_eq!(
+            tokenize(&"[r]こんにちは[r]b", "[", "]"),
+            vec![
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 0, byte_start: 0, end: 3, byte_end: 3},
+                Token {value: "こんにちは", kind :TokenKind::Text, start: 3, byte_start: 3, end: 8, byte_end: 18},
+                Token {value: "[r]", kind :TokenKind::Element(default_element.clone()), start: 8, byte_start: 18, end: 11, byte_end: 21},
+                Token {value: "b", kind :TokenKind::Text, start: 11, byte_start: 21, end: 12, byte_end: 22}
+            ]
+        );
+        assert_eq!(
+            tokenize(&"r[g", "[", "]"),
+            vec![
+                Token {value: "r[g", kind :TokenKind::Text, start: 0, byte_start: 0, end: 3, byte_end: 3}
+            ]
+        );
+        assert_eq!(
+            tokenize(&"<!--r-->gb", "<!--", "-->"),
+            vec![
+                Token {value: "<!--r-->", kind :TokenKind::Element(ElementToken {delimiter_start: "<!--", delimiter_end: "-->"}), start: 0, byte_start: 0, end: 8, byte_end: 8},
+                Token {value: "gb", kind :TokenKind::Text, start: 8, byte_start: 8, end: 10, byte_end: 10}
+            ]
+        );
+        assert_eq!(
+            tokenize(&"foo<div><!--r-->gb", "<!--", "-->"),
+            vec![
+                Token {value: "foo<div>", kind :TokenKind::Text, start: 0, byte_start: 0, end: 8, byte_end: 8},
+                Token {value: "<!--r-->", kind :TokenKind::Element(ElementToken {delimiter_start: "<!--", delimiter_end: "-->"}), start: 8, byte_start: 8, end: 16, byte_end: 16},
+                Token {value: "gb", kind :TokenKind::Text, start: 16, byte_start: 16, end: 18, byte_end: 18}
+            ]
+        );
     }
 }

@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use clap::Parser;
 use formatter::Formatter;
-use std::collections::HashSet;
 mod tokenizer;
 mod element_parser;
 mod parser;
@@ -60,13 +59,17 @@ fn main() {
         }),
     );
 
+    let tokens = tokenizer::tokenize(
+        &content,
+        args.time_limited_delimiter_start.as_str(),
+        args.time_limited_delimiter_end.as_str(),
+    );
+
     let (removed, markers) = remover::remove(
-        parser::parse(
-            &content,
-            args.time_limited_delimiter_start.as_str(),
-            args.time_limited_delimiter_end.as_str(),
-        ),
-    &builder_map);
+        parser::parse(&tokens),
+        &content,
+        &builder_map
+    );
 
     let removed_pos = remover::get_removed_pos(&markers);
     let formatter: Vec<Box<dyn Formatter>> = vec![
