@@ -1,0 +1,64 @@
+name: Release-Nightly
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: cargo build --release
+
+      - run: mkdir -p target/release/${{ runner.os }}
+
+      - run: cp target/release/chiritori target/release/${{ runner.os }}/chiritori
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-binary
+          path: target/release/${{ runner.os }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download Artifacts (ubuntu-latest-binary)
+        uses: actions/download-artifact@v4
+        with:
+          name: ubuntu-latest-binary
+
+      - name: Download Artifacts (windows-latest-binary)
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-latest-binary
+
+      - name: Download Artifacts (macos-latest-binary)
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-latest-binary
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          draft: true
+          prerelease: true
+          files: |
+            target/release/ubuntu-latest/*
+            target/release/windows-latest/*
+            target/release/macos-latest/*
