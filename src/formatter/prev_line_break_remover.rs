@@ -5,10 +5,17 @@ pub struct PrevLineBreakRemover {}
 impl Formatter for PrevLineBreakRemover {
     fn format(&self, content: &mut String, byte_pos: usize) -> usize {
         let mut cursor = byte_pos;
-
         let bytes = content.as_bytes();
 
+        if cursor >= bytes.len() {
+            return cursor;
+        }
+
         let line_break_pos = loop {
+            if cursor == 0 {
+                break None;
+            }
+
             cursor = cursor - 1;
 
             let current = bytes.get(cursor);
@@ -20,10 +27,6 @@ impl Formatter for PrevLineBreakRemover {
                     None => break None,
                     _ => break None,
                 };
-            }
-
-            if cursor == 0 {
-                break None;
             }
         };
 
@@ -115,5 +118,8 @@ mod tests {
             content,
             "aaa+ あ</div>".replace('+', "\n")
         );
+
+        let mut content = "\n".to_string();
+        assert_eq!(remover.format(&mut content, 0), 0);
     }
 }

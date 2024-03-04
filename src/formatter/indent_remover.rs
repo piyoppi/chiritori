@@ -6,11 +6,15 @@ impl Formatter for IndentRemover {
         let mut cursor = byte_pos;
         let bytes = content.as_bytes();
 
-        if !content.is_char_boundary(cursor) || bytes[cursor] != b'\n' {
+        if cursor >= bytes.len() || !content.is_char_boundary(cursor) || bytes[cursor] != b'\n' {
             return cursor;
         }
 
         let found = loop {
+            if cursor == 0 {
+                break false;
+            }
+
             cursor = cursor - 1;
 
             let current = bytes.get(cursor);
@@ -26,10 +30,6 @@ impl Formatter for IndentRemover {
                     None => break false,
                     _ => break false,
                 };
-            }
-
-            if cursor == 0 {
-                break false;
             }
         };
 
@@ -105,5 +105,11 @@ mod tests {
         //                 |         ^
         let mut content = "+<div>+  あ  +    +    foo</div>".replace('+', "\n");
         assert_eq!(remover.format(&mut content, 10), 10);
+
+        let mut content = "".to_string();
+        assert_eq!(remover.format(&mut content, 0), 0);
+
+        let mut content = "\n".to_string();
+        assert_eq!(remover.format(&mut content, 0), 0);
     }
 }
