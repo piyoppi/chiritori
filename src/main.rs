@@ -30,10 +30,10 @@ struct Args {
     time_limited_current: String,
 
     #[arg(long, default_value = "<!--")]
-    time_limited_delimiter_start: String,
+    delimiter_start: String,
 
     #[arg(long, default_value = "-->")]
-    time_limited_delimiter_end: String,
+    delimiter_end: String,
 }
 
 fn main() {
@@ -68,8 +68,8 @@ fn main() {
 
     let tokens = tokenizer::tokenize(
         &content,
-        args.time_limited_delimiter_start.as_str(),
-        args.time_limited_delimiter_end.as_str(),
+        args.delimiter_start.as_str(),
+        args.delimiter_end.as_str(),
     );
 
     let (removed, markers) = remover::remove(parser::parse(&tokens), &content, &builder_map);
