@@ -1,10 +1,10 @@
 pub mod remove_marker_builder;
 pub mod time_limited_remover;
 
-use std::collections::HashMap;
-use crate::parser::ContentPart;
-use crate::parser;
 use self::remove_marker_builder::RemoveMarkerBuilder;
+use crate::parser;
+use crate::parser::ContentPart;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct RemoveMarker {
@@ -12,25 +12,37 @@ pub struct RemoveMarker {
     pub byte_end: usize,
 }
 
-fn remove_marker(contents: &Vec<ContentPart>, builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>) -> Vec<RemoveMarker> {
-    contents.iter()
-        .fold(vec![], |mut acc, c| {
-            if let parser::ContentPart::Element(el) = c {
-                let builder = builder_map.get(el.start_element.name);
-                let marker = builder.map(|builder| builder.create_remove_marker(&el.start_token, &el.start_element, &el.end_token)).flatten();
+fn remove_marker(
+    contents: &Vec<ContentPart>,
+    builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>,
+) -> Vec<RemoveMarker> {
+    contents.iter().fold(vec![], |mut acc, c| {
+        if let parser::ContentPart::Element(el) = c {
+            let builder = builder_map.get(el.start_element.name);
+            let marker = builder
+                .map(|builder| {
+                    builder.create_remove_marker(&el.start_token, &el.start_element, &el.end_token)
+                })
+                .flatten();
 
-                if marker.is_some() {
-                    acc.push(marker.unwrap());
-                } else {
-                    remove_marker(&el.children, builder_map).into_iter().for_each(|m| acc.push(m));
-                }
+            if marker.is_some() {
+                acc.push(marker.unwrap());
+            } else {
+                remove_marker(&el.children, builder_map)
+                    .into_iter()
+                    .for_each(|m| acc.push(m));
             }
+        }
 
-            acc
-        })
+        acc
+    })
 }
 
-pub fn remove(content: Vec<ContentPart>, raw: &str, builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>) -> (String, Vec<RemoveMarker>) {
+pub fn remove(
+    content: Vec<ContentPart>,
+    raw: &str,
+    builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>,
+) -> (String, Vec<RemoveMarker>) {
     let markers = remove_marker(&content, builder_map);
     let mut new_content = raw.to_string();
 
@@ -42,10 +54,13 @@ pub fn remove(content: Vec<ContentPart>, raw: &str, builder_map: &HashMap<&str, 
 }
 
 pub fn get_removed_pos(markers: &Vec<RemoveMarker>) -> Vec<usize> {
-    markers.iter().fold((vec![], 0), |mut acc, marker| {
-        acc.0.push(marker.byte_start - acc.1);
-        (acc.0, acc.1 + marker.byte_end - marker.byte_start)
-    }).0
+    markers
+        .iter()
+        .fold((vec![], 0), |mut acc, marker| {
+            acc.0.push(marker.byte_start - acc.1);
+            (acc.0, acc.1 + marker.byte_end - marker.byte_start)
+        })
+        .0
 }
 
 #[cfg(test)]
@@ -62,27 +77,25 @@ mod tests {
         let contents = parser::parse(&tokens);
 
         let mut builder_map: HashMap<&str, Box<dyn RemoveMarkerBuilder>> = HashMap::new();
-        builder_map.insert("tl", Box::new(time_limited_remover::TimeLimitedRemover {
-            current_time: chrono::Local::now(),
-            time_offset: "+00:00".to_string(),
-        }));
+        builder_map.insert(
+            "tl",
+            Box::new(time_limited_remover::TimeLimitedRemover {
+                current_time: chrono::Local::now(),
+                time_offset: "+00:00".to_string(),
+            }),
+        );
         assert_eq!(
             remove_marker(&contents, &builder_map),
-            vec![
-                RemoveMarker {
-                    byte_start: 3,
-                    byte_end: 40,
-                },
-            ]
+            vec![RemoveMarker {
+                byte_start: 3,
+                byte_end: 40,
+            },]
         );
 
         let content = "foo<baz>a";
         let tokens = tokenizer::tokenize(content, "<", ">");
         let contents = parser::parse(&tokens);
-        assert_eq!(
-            remove_marker(&contents, &builder_map),
-            vec![]
-        );
+        assert_eq!(remove_marker(&contents, &builder_map), vec![]);
     }
 
     #[test]
@@ -103,12 +116,19 @@ mod tests {
 ";
 
         let mut builder_map: HashMap<&str, Box<dyn RemoveMarkerBuilder>> = HashMap::new();
-        builder_map.insert("time-limited", Box::new(time_limited_remover::TimeLimitedRemover {
-            current_time: chrono::Local::now(),
-            time_offset: "+00:00".to_string(),
-        }));
+        builder_map.insert(
+            "time-limited",
+            Box::new(time_limited_remover::TimeLimitedRemover {
+                current_time: chrono::Local::now(),
+                time_offset: "+00:00".to_string(),
+            }),
+        );
         assert_eq!(
-            remove(parser::parse(&tokenizer::tokenize(content, "<!--", "-->")), content, &builder_map),
+            remove(
+                parser::parse(&tokenizer::tokenize(content, "<!--", "-->")),
+                content,
+                &builder_map
+            ),
             (
                 "+<div>+    hoge+    +    foo+    bar+    baz+    +</div>+".replace('+', "\n"),
                 vec![
@@ -136,14 +156,19 @@ foo
 ";
 
         assert_eq!(
-            remove(parser::parse(&tokenizer::tokenize(content, "<!--", "-->")), content, &builder_map),
+            remove(
+                parser::parse(&tokenizer::tokenize(content, "<!--", "-->")),
+                content,
+                &builder_map
+            ),
             (
                 "
 hoge
 
 foo
 
-".to_string(),
+"
+                .to_string(),
                 vec![
                     RemoveMarker {
                         byte_start: 6,
@@ -184,9 +209,6 @@ foo
                 byte_end: 9,
             },
         ];
-        assert_eq!(
-            get_removed_pos(&markers),
-            vec![1, 3, 5]
-        );
+        assert_eq!(get_removed_pos(&markers), vec![1, 3, 5]);
     }
 }

@@ -1,13 +1,13 @@
+use clap::Parser;
+use formatter::Formatter;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
-use clap::Parser;
-use formatter::Formatter;
-mod tokenizer;
 mod element_parser;
+mod formatter;
 mod parser;
 mod remover;
-mod formatter;
+mod tokenizer;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -42,7 +42,8 @@ fn main() {
     let mut content = String::new();
 
     if args.filename.is_none() {
-        std::io::stdin().read_to_string(&mut content)
+        std::io::stdin()
+            .read_to_string(&mut content)
             .expect("something went wrong reading the file");
     } else {
         let mut f = File::open(args.filename.unwrap()).expect("file not found");
@@ -50,11 +51,17 @@ fn main() {
             .expect("something went wrong reading the file");
     }
 
-    let mut builder_map: HashMap<&str, Box<dyn remover::remove_marker_builder::RemoveMarkerBuilder>> = HashMap::new();
+    let mut builder_map: HashMap<
+        &str,
+        Box<dyn remover::remove_marker_builder::RemoveMarkerBuilder>,
+    > = HashMap::new();
     builder_map.insert(
         args.time_limited_tag_name.as_str(),
         Box::new(remover::time_limited_remover::TimeLimitedRemover {
-            current_time: args.time_limited_current.parse::<chrono::DateTime<chrono::Local>>().unwrap_or(chrono::Local::now()),
+            current_time: args
+                .time_limited_current
+                .parse::<chrono::DateTime<chrono::Local>>()
+                .unwrap_or(chrono::Local::now()),
             time_offset: args.time_limited_time_offset.to_string(),
         }),
     );
@@ -65,11 +72,7 @@ fn main() {
         args.time_limited_delimiter_end.as_str(),
     );
 
-    let (removed, markers) = remover::remove(
-        parser::parse(&tokens),
-        &content,
-        &builder_map
-    );
+    let (removed, markers) = remover::remove(parser::parse(&tokens), &content, &builder_map);
 
     let removed_pos = remover::get_removed_pos(&markers);
     let formatter: Vec<Box<dyn Formatter>> = vec![
@@ -80,7 +83,8 @@ fn main() {
 
     if let Some(output) = args.output {
         let mut f = File::create(output).expect("file not found");
-        f.write_all(cleaned.as_bytes()).expect("something went wrong writing the file");
+        f.write_all(cleaned.as_bytes())
+            .expect("something went wrong writing the file");
     } else {
         println!("{}", cleaned);
     }

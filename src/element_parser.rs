@@ -22,117 +22,103 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
         AttrWithNoQuote,
         AttrWithDoubleQuote(usize),
         AttrWithSingleQuote(usize),
-        ParseError
+        ParseError,
     }
 
     match &token.kind {
         tokenizer::TokenKind::Element(element) => {
-            let target = token.value
+            let target = token
+                .value
                 .trim_start_matches(&element.delimiter_start)
                 .trim_end_matches(&element.delimiter_end);
 
-            let values = target
-                .char_indices()
-                .fold((vec![], State::NameBegin), |mut acc, (pos, val)| {
-                    match acc.1 {
-                        State::NameBegin => {
-                            match val {
-                                ' ' => {},
+            let values =
+                target
+                    .char_indices()
+                    .fold((vec![], State::NameBegin), |mut acc, (pos, val)| {
+                        match acc.1 {
+                            State::NameBegin => match val {
+                                ' ' => {}
                                 '=' => acc.1 = State::ParseError,
                                 '"' => acc.1 = State::ParseError,
                                 '\'' => acc.1 = State::ParseError,
-                                _   => {
+                                _ => {
                                     acc.1 = State::Name(pos);
                                 }
-                            }
-                        },
-                        State::Name(start) => {
-                            match val {
+                            },
+                            State::Name(start) => match val {
                                 ' ' => {
                                     acc.0.push((&target[start..pos], None));
                                     acc.1 = State::NameEnd;
-                                },
+                                }
                                 '=' => {
                                     acc.0.push((&target[start..pos], None));
                                     acc.1 = State::AttrBegin
-                                },
-                                _   => {}
-                            }
-                        },
-                        State::NameEnd => {
-                            match val {
-                                ' ' => {},
+                                }
+                                _ => {}
+                            },
+                            State::NameEnd => match val {
+                                ' ' => {}
                                 '=' => acc.1 = State::AttrBegin,
-                                _   => {
+                                _ => {
                                     acc.1 = State::Name(pos);
                                 }
-                            }
-                        },
-                        State::AttrBegin => {
-                            match val {
-                                ' '     => {},
-                                '"'     => {
-                                    acc.1 = State::AttrWithDoubleQuote(pos+1);
-                                },
-                                '\''    => {
-                                    acc.1 = State::AttrWithSingleQuote(pos+1);
-                                },
-                                _       => acc.1 = State::AttrWithNoQuote
-                            }
-                        },
-                        State::AttrWithDoubleQuote(start) => {
-                            match val {
-                                '"'     => {
+                            },
+                            State::AttrBegin => match val {
+                                ' ' => {}
+                                '"' => {
+                                    acc.1 = State::AttrWithDoubleQuote(pos + 1);
+                                }
+                                '\'' => {
+                                    acc.1 = State::AttrWithSingleQuote(pos + 1);
+                                }
+                                _ => acc.1 = State::AttrWithNoQuote,
+                            },
+                            State::AttrWithDoubleQuote(start) => match val {
+                                '"' => {
                                     acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
                                     acc.1 = State::NameBegin
-                                },
-                                _       => {}
-                            }
-                        },
-                        State::AttrWithSingleQuote(start) => {
-                            match val {
+                                }
+                                _ => {}
+                            },
+                            State::AttrWithSingleQuote(start) => match val {
                                 '\'' => {
                                     acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
                                     acc.1 = State::NameBegin
-                                },
-                                _    => {}
-                            }
-                        },
-                        State::AttrWithNoQuote => {
-                            match val {
+                                }
+                                _ => {}
+                            },
+                            State::AttrWithNoQuote => match val {
                                 ' ' => acc.1 = State::NameBegin,
-                                _   => {}
-                            }
-                        },
-                        State::ParseError => {}
-                    }
+                                _ => {}
+                            },
+                            State::ParseError => {}
+                        }
 
-                    acc
-                });
+                        acc
+                    });
 
             if values.1 == State::ParseError {
                 return None;
             }
 
-            let (name, attrs) = if let State::Name(start) = values.1  {
+            let (name, attrs) = if let State::Name(start) = values.1 {
                 (&target[start..], vec![])
             } else {
                 (
                     values.0[0].0,
-                    values.0[1..].iter().map(|s| {
-                        Attribute {
+                    values.0[1..]
+                        .iter()
+                        .map(|s| Attribute {
                             name: s.0,
-                            value: s.1
-                        }
-                    }).collect()
+                            value: s.1,
+                        })
+                        .collect(),
                 )
             };
 
-            Some(Element {
-                name,
-                attrs,
-            })
-        },
+            Some(Element { name, attrs })
+        }
         _ => None,
     }
 }
@@ -144,12 +130,10 @@ mod tests {
     #[test]
     fn test_parse() {
         let token = tokenizer::Token {
-            kind: tokenizer::TokenKind::Element(
-                tokenizer::ElementToken {
-                    delimiter_start: "<!--",
-                    delimiter_end: "-->"
-                }
-            ),
+            kind: tokenizer::TokenKind::Element(tokenizer::ElementToken {
+                delimiter_start: "<!--",
+                delimiter_end: "-->",
+            }),
             value: "<!-- hello-world -->",
             start: 0,
             byte_start: 0,
@@ -157,18 +141,19 @@ mod tests {
             byte_end: 18,
         };
 
-        assert_eq!(parse(&token), Some(Element {
-           name: "hello-world",
-           attrs: vec![],
-        }));
+        assert_eq!(
+            parse(&token),
+            Some(Element {
+                name: "hello-world",
+                attrs: vec![],
+            })
+        );
 
         let token = tokenizer::Token {
-            kind: tokenizer::TokenKind::Element(
-                tokenizer::ElementToken {
-                    delimiter_start: "<!--",
-                    delimiter_end: "-->"
-                }
-            ),
+            kind: tokenizer::TokenKind::Element(tokenizer::ElementToken {
+                delimiter_start: "<!--",
+                delimiter_end: "-->",
+            }),
             value: "<!-- hello-world from=\"2022-01-01 00:00:00\" to='123' -->",
             start: 0,
             byte_start: 0,
@@ -176,31 +161,28 @@ mod tests {
             byte_end: 48,
         };
 
-        assert_eq!(parse(&token), Some(Element {
-            name: "hello-world",
-            attrs: vec![
-                Attribute {
-                    name: "from",
-                    value: Some("2022-01-01 00:00:00")
-                },
-                Attribute {
-                    name: "to",
-                    value: Some("123")
-                }
-            ],
-        }));
+        assert_eq!(
+            parse(&token),
+            Some(Element {
+                name: "hello-world",
+                attrs: vec![
+                    Attribute {
+                        name: "from",
+                        value: Some("2022-01-01 00:00:00")
+                    },
+                    Attribute {
+                        name: "to",
+                        value: Some("123")
+                    }
+                ],
+            })
+        );
 
         let tokens = tokenizer::tokenize("<foo", "<", ">");
-        assert_eq!(
-            parse(&tokens[0]),
-            None
-        );
+        assert_eq!(parse(&tokens[0]), None);
 
         let tokens = tokenizer::tokenize("foo", "<", ">");
-        assert_eq!(
-            parse(&tokens[0]),
-            None
-        );
+        assert_eq!(parse(&tokens[0]), None);
 
         let tokens = tokenizer::tokenize("<foo=><bar<><bar>", "<", ">");
         assert_eq!(
@@ -230,12 +212,10 @@ mod tests {
             parse(&tokens[0]),
             Some(Element {
                 name: "foo",
-                attrs: vec![
-                    Attribute {
-                        name: "bar",
-                        value: None
-                    }
-                ],
+                attrs: vec![Attribute {
+                    name: "bar",
+                    value: None
+                }],
             })
         );
 
@@ -244,12 +224,10 @@ mod tests {
             parse(&tokens[0]),
             Some(Element {
                 name: "foo",
-                attrs: vec![
-                    Attribute {
-                        name: "bar",
-                        value: None
-                    }
-                ],
+                attrs: vec![Attribute {
+                    name: "bar",
+                    value: None
+                }],
             })
         );
 

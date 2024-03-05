@@ -22,7 +22,7 @@ impl Formatter for PrevLineBreakRemover {
 
             if content.is_char_boundary(cursor) {
                 match current {
-                    Some(b' ') => {},
+                    Some(b' ') => {}
                     Some(b'\n') => break Some(cursor),
                     None => break None,
                     _ => break None,
@@ -52,10 +52,7 @@ mod tests {
         //                 |            ^
         let mut content = "    hoge+    +    foo</div>".replace('+', "\n");
         assert_eq!(remover.format(&mut content, 13), 8);
-        assert_eq!(
-            content,
-            "    hoge+    foo</div>".replace('+', "\n")
-        );
+        assert_eq!(content, "    hoge+    foo</div>".replace('+', "\n"));
 
         //                          10        20
         //                 012345678901234567890123456
@@ -63,10 +60,7 @@ mod tests {
         let mut content = "    hoge+  x +    foo</div>".replace('+', "\n");
         let remover = PrevLineBreakRemover {};
         assert_eq!(remover.format(&mut content, 13), 13);
-        assert_eq!(
-            content,
-            "    hoge+  x +    foo</div>".replace('+', "\n")
-        );
+        assert_eq!(content, "    hoge+  x +    foo</div>".replace('+', "\n"));
 
         //                          10        20
         //                 0123456789012345678901234567
@@ -74,50 +68,35 @@ mod tests {
         let mut content = "    hoge +    +    foo</div>".replace('+', "\n");
         let remover = PrevLineBreakRemover {};
         assert_eq!(remover.format(&mut content, 14), 9);
-        assert_eq!(
-            content,
-            "    hoge +    foo</div>".replace('+', "\n")
-        );
+        assert_eq!(content, "    hoge +    foo</div>".replace('+', "\n"));
 
         //                          10
         //                 012345678901234567
         //                 |      ^
         let mut content = "+hoge++++baz</div>".replace('+', "\n");
         assert_eq!(remover.format(&mut content, 7), 6);
-        assert_eq!(
-            content,
-            "+hoge+++baz</div>".replace('+', "\n")
-        );
+        assert_eq!(content, "+hoge+++baz</div>".replace('+', "\n"));
 
         //                          10
         //                 01234567890123
         //                 |  ^
         let mut content = "+++++baz</div>".replace('+', "\n");
         assert_eq!(remover.format(&mut content, 3), 2);
-        assert_eq!(
-            content,
-            "++++baz</div>".replace('+', "\n")
-        );
+        assert_eq!(content, "++++baz</div>".replace('+', "\n"));
 
         //                          10
         //                 01234567890123
         //                 |  ^
         let mut content = "aaaabaz</div>".replace('+', "\n");
         assert_eq!(remover.format(&mut content, 3), 3);
-        assert_eq!(
-            content,
-            "aaaabaz</div>".replace('+', "\n")
-        );
+        assert_eq!(content, "aaaabaz</div>".replace('+', "\n"));
 
         //                          10
         //                 012345.890123
         //                 |     ^
         let mut content = "aaa+ あ</div>".replace('+', "\n");
         assert_eq!(remover.format(&mut content, 7), 7);
-        assert_eq!(
-            content,
-            "aaa+ あ</div>".replace('+', "\n")
-        );
+        assert_eq!(content, "aaa+ あ</div>".replace('+', "\n"));
 
         let mut content = "\n".to_string();
         assert_eq!(remover.format(&mut content, 0), 0);
