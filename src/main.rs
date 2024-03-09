@@ -20,18 +20,23 @@ struct Args {
     #[arg(short, long)]
     output: Option<String>,
 
+    /// The tag name for time-limited content
     #[arg(long, default_value = "time-limited")]
     time_limited_tag_name: String,
 
+    /// The time offset for time-limited content
     #[arg(long, default_value = "+00:00")]
     time_limited_time_offset: String,
 
+    /// The current time for time-limited content
     #[arg(long, default_value = "")]
     time_limited_current: String,
 
+    /// The delimiter start
     #[arg(long, default_value = "<!--")]
     delimiter_start: String,
 
+    /// The delimiter end
     #[arg(long, default_value = "-->")]
     delimiter_end: String,
 }
