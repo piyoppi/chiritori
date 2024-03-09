@@ -86,6 +86,6 @@ fn main() {
         f.write_all(cleaned.as_bytes())
             .expect("something went wrong writing the file");
     } else {
-        println!("{}", cleaned);
+        print!("{}", cleaned);
     }
 }
