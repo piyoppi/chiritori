@@ -1,9 +1,11 @@
 [package]
 name = "chiritori"
 version = "0.1.0"
+description = "A tool for finding and removing time-limited source code"
+repository = "https://github.com/piyoppi/chiritori"
+license = "MIT"
+authors = ["piyoppi"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 chrono = "0.4.34"
