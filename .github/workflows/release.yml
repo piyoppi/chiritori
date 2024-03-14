@@ -7,12 +7,38 @@ on:
     tags:
       - 'v*.*.*'
 jobs:
-  build:
-    name: Build and Release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  build-on-ubuntu:
+    name: Build on Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Build (x86_64-unknown-linux-musl)
+        run: |
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: compress
+        run: |
+          tar -czf target/release/ubuntu-latest.tar.gz target/release/chiritori
+          tar -czf target/x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz target/x86_64-unknown-linux-musl/release/chiritori
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-latest-binary
+          path: |
+            target/release/ubuntu-latest.tar.gz
+            target/x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz
+
+  build-on-macos:
+    name: Build on macOS
+    runs-on: macos-latest
 
     steps:
       - name: Checkout
@@ -22,16 +48,20 @@ jobs:
         run: cargo build --release
 
       - name: compress
-        run: tar -czf target/release/${{ matrix.os }}.tar.gz target/release/chiritori
+        run: |
+          tar -czf target/release/macos-latest.tar.gz target/release/chiritori
 
       - name: Upload Release Asset
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os}}-binary
-          path: target/release/${{ matrix.os }}.tar.gz
+          name: macos-latest-binary
+          path: |
+            target/release/macos-latest.tar.gz
 
   release:
-    needs: build
+    needs:
+      - build-on-ubuntu
+      - build-on-macos
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -54,7 +84,8 @@ jobs:
           draft: true
           prerelease: true
           files: |
-            ubuntu-latest.tar.gz
+            release/ubuntu-latest.tar.gz
+            x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz
             macos-latest.tar.gz
 
       - name: Create Release(Release)
@@ -63,5 +94,6 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           files: |
-            ubuntu-latest.tar.gz
+            release/ubuntu-latest.tar.gz
+            x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz
             macos-latest.tar.gz
