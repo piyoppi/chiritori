@@ -47,9 +47,14 @@ fn main() {
     let mut content = String::new();
 
     if args.filename.is_none() {
-        std::io::stdin()
-            .read_to_string(&mut content)
-            .expect("something went wrong reading the file");
+        if atty::isnt(atty::Stream::Stdin) {
+            std::io::stdin()
+                .read_to_string(&mut content)
+                .expect("something went wrong reading the file");
+        } else {
+            println!("No input file or stdin. More information: --help");
+            std::process::exit(1);
+        }
     } else {
         let mut f = File::open(args.filename.unwrap()).expect("file not found");
         f.read_to_string(&mut content)
