@@ -1,4 +1,5 @@
 pub mod indent_remover;
+pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
 
 pub trait Formatter {
