@@ -1,5 +1,8 @@
+pub mod empty_line_remover;
 pub mod indent_remover;
+pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
+pub mod utils;
 
 pub trait Formatter {
     fn format(&self, content: &mut String, byte_pos: usize) -> usize;
@@ -44,22 +47,120 @@ mod tests {
 
     #[test]
     fn test_format() {
+        let strategy: Vec<Box<dyn Formatter>> = vec![
+            Box::new(indent_remover::IndentRemover {}),
+            Box::new(empty_line_remover::EmptyLineRemover {}),
+            Box::new(prev_line_break_remover::PrevLineBreakRemover {}),
+            Box::new(next_line_break_remover::NextLineBreakRemover {}),
+        ];
+
+        // source:        converted:
+        //  1 |<div>         1 |<div>
+        //  2 |....hoge      2 |....hoge
+        //  3 |....X         3 |....foo
+        //  4 |....foo       4 |....bar
+        //  5 |....bar       5 |....baz
+        //  6 |....baz       6 |
+        //  7 |              7 |</div>
+        //  8 |....X         8 |
+        //  9 |</div>
+        //
         //                       10        20       30        40        50
         //             01234567890123456789012345678901234567890123456789012345
-        //                                 ^                            ^
-        let content = "+<div>+    hoge+    +    foo+    bar+    baz+    +</div>".replace('+', "\n");
-        let removed_pos = &vec![20, 49];
+        //                                ^                             ^
+        let content = "<div>+    hoge+    +    foo+    bar+    baz++    +</div>".replace('+', "\n");
+        let removed_pos = &vec![19, 49];
         assert_eq!(
             format(
                 &content,
                 &removed_pos,
-                &vec![
-                    Box::new(indent_remover::IndentRemover {}),
-                    Box::new(prev_line_break_remover::PrevLineBreakRemover {}),
-                ]
+                &strategy
             ),
-            //123456789012345678901234567890123456789012345
-            "+<div>+    hoge+    foo+    bar+    baz+</div>".replace('+', "\n")
+            //12345678901234567890123456789012345678901234567
+            "<div>+    hoge+    foo+    bar+    baz++</div>".replace('+', "\n")
+        );
+
+        // source:        converted:
+        //  1 |....hoge      1 |....hoge
+        //  2 |....X         2 |....foo
+        //  3 |....foo
+        //
+        //                       10        20
+        //             0123456789012345678901
+        //                          ^
+        let content = "    hoge+    +    foo+".replace('+', "\n");
+        let removed_pos = &vec![13];
+        assert_eq!(
+            format(
+                &content,
+                &removed_pos,
+                &strategy
+            ),
+            //12345678901234567890123456789012345678901234567
+            "    hoge+    foo+".replace('+', "\n")
+        );
+
+        // source:        converted:
+        //  1 |....hoge      1 |....hoge
+        //  2 |              2 |
+        //  3 |....X         3 |....foo
+        //  4 |....foo
+        //
+        //                       10        20
+        //             01234567890123456789012
+        //                           ^
+        let content = "    hoge++    +    foo+".replace('+', "\n");
+        let removed_pos = &vec![14];
+        assert_eq!(
+            format(
+                &content,
+                &removed_pos,
+                &strategy
+            ),
+            //12345678901234567890123456789012345678901234567
+            "    hoge++    foo+".replace('+', "\n")
+        );
+
+        // source:        converted:
+        //  1 |....hoge      1 |....hoge
+        //  2 |....X         2 |
+        //  3 |              3 |....foo
+        //  4 |....foo
+        //
+        //                       10        20
+        //             01234567890123456789012
+        //                           ^
+        let content = "    hoge+    ++    foo+".replace('+', "\n");
+        let removed_pos = &vec![14];
+        assert_eq!(
+            format(
+                &content,
+                &removed_pos,
+                &strategy
+            ),
+            //12345678901234567890123456789012345678901234567
+            "    hoge++    foo+".replace('+', "\n")
+        );
+
+        // source:        converted:
+        //  1 |....hoge      1 |....hoge
+        //  2 |.             2 |
+        //  3 |....X         3 |....foo
+        //  4 |.
+        //  5 |....foo
+        //                       10        20
+        //             01234567890123456789012
+        //                            ^
+        let content = "    hoge+ +    + +    foo+".replace('+', "\n");
+        let removed_pos = &vec![15];
+        assert_eq!(
+            format(
+                &content,
+                &removed_pos,
+                &strategy
+            ),
+            //12345678901234567890123456789012345678901234567
+            "    hoge++    foo+".replace('+', "\n")
         );
 
         // RemovePos 26 is unprossed because RemovePos 31 is formatted including RemovePos 26.
@@ -76,7 +177,7 @@ mod tests {
                 &vec![Box::new(prev_line_break_remover::PrevLineBreakRemover {}),]
             ),
             //123456789012345678901234567890123456789012345
-            "+<div>+    +    +    +    +</div>".replace('+', "\n")
+            "+<div>+    +    +    ++</div>".replace('+', "\n")
         );
 
         //                       10        20

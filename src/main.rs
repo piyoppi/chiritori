@@ -87,7 +87,9 @@ fn main() {
     let removed_pos = remover::get_removed_pos(&markers);
     let formatter: Vec<Box<dyn Formatter>> = vec![
         Box::new(formatter::indent_remover::IndentRemover {}),
+        Box::new(formatter::empty_line_remover::EmptyLineRemover {}),
         Box::new(formatter::prev_line_break_remover::PrevLineBreakRemover {}),
+        Box::new(formatter::next_line_break_remover::NextLineBreakRemover {}),
     ];
     let cleaned = formatter::format(&removed, &removed_pos, &formatter);
 
