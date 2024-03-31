@@ -1,11 +1,13 @@
+use super::utils::line_break_pos_finder::find_next_line_break_pos;
 use super::Formatter;
-
 pub struct NextLineBreakRemover {}
 
 impl Formatter for NextLineBreakRemover {
     fn format(&self, content: &mut String, byte_pos: usize) -> usize {
-        let line_break_pos = find_line_break_pos(content, byte_pos)
-            .map(|pos| find_line_break_pos(content, pos + 1))
+        let bytes = content.as_bytes();
+
+        let line_break_pos = find_next_line_break_pos(content, bytes, byte_pos)
+            .map(|pos| find_next_line_break_pos(content, bytes, pos + 1))
             .flatten();
 
         if let Some(line_break_pos) = line_break_pos {
@@ -13,28 +15,6 @@ impl Formatter for NextLineBreakRemover {
         }
 
         byte_pos
-    }
-}
-
-fn find_line_break_pos(content: &str, byte_pos: usize) -> Option<usize> {
-    let mut cursor = byte_pos;
-    let bytes = content.as_bytes();
-
-    loop {
-        if cursor >= bytes.len() || cursor == 0 {
-            break None;
-        }
-
-        if content.is_char_boundary(cursor) {
-            match bytes.get(cursor) {
-                Some(b' ') => {}
-                Some(b'\n') => break Some(cursor),
-                None => break None,
-                _ => break None,
-            };
-        }
-
-        cursor = cursor + 1;
     }
 }
 
