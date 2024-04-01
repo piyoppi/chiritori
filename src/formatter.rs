@@ -5,7 +5,7 @@ pub mod prev_line_break_remover;
 pub mod utils;
 
 pub trait Formatter {
-    fn format(&self, content: &mut String, byte_pos: usize) -> usize;
+    fn format(&self, content: &str, byte_pos: usize) -> (usize, usize);
 }
 
 pub fn format(
@@ -25,17 +25,18 @@ pub fn format(
                     }
                 }
 
-                let mut pos = *pos;
-
-                if !acc.is_char_boundary(pos) {
-                    panic!("Invalid byte position: {}", pos);
+                if !acc.is_char_boundary(*pos) {
+                    panic!("Invalid byte position: {}", *pos);
                 }
 
-                formatters.iter().for_each(|f| {
-                    pos = f.format(&mut acc, pos);
+                let updated_pos = formatters.iter().fold(*pos, |pos, f| {
+                    let (start, end) = f.format(&mut acc, pos);
+                    acc.replace_range(start..end, "");
+
+                    start
                 });
 
-                (acc, Some(pos))
+                (acc, Some(updated_pos))
             },
         )
         .0

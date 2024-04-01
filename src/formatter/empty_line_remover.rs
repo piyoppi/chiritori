@@ -5,7 +5,7 @@ use super::Formatter;
 pub struct EmptyLineRemover {}
 
 impl Formatter for EmptyLineRemover {
-    fn format(&self, content: &mut String, byte_pos: usize) -> usize {
+    fn format(&self, content: &str, byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 
         if !content.is_char_boundary(byte_pos) {
@@ -13,7 +13,7 @@ impl Formatter for EmptyLineRemover {
         }
 
         if bytes.get(byte_pos) != Some(&b'\n') {
-            return byte_pos;
+            return (byte_pos, byte_pos);
         }
 
         let is_next_line_empty = find_next_line_break_pos(content, bytes, byte_pos)
@@ -26,10 +26,10 @@ impl Formatter for EmptyLineRemover {
             == None;
 
         if is_next_line_empty && is_prev_line_empty {
-            content.replace_range(byte_pos..(byte_pos + 1), "");
+            (byte_pos, byte_pos + 1)
+        } else {
+            (byte_pos, byte_pos)
         }
-
-        byte_pos
     }
 }
 
@@ -41,32 +41,28 @@ mod tests {
     fn test_format() {
         let remover = EmptyLineRemover {};
 
-        //                          10        20
-        //                 0123456789012345
-        //                 |        ^
-        let mut content = "    hoge++  foo".replace('+', "\n");
-        assert_eq!(remover.format(&mut content, 9), 9);
-        assert_eq!(content, "    hoge+  foo".replace('+', "\n"));
+        //                      10
+        //             0123456789012345
+        //             |        ^
+        let content = "    hoge++  foo".replace('+', "\n");
+        assert_eq!(remover.format(&content, 9), (9, 10));
 
-        //                          10        20
-        //                 0123456789012345
-        //                 |         ^
-        let mut content = "    hoge+++  foo".replace('+', "\n");
-        assert_eq!(remover.format(&mut content, 10), 10);
-        assert_eq!(content, "    hoge+++  foo".replace('+', "\n"));
+        //                      10
+        //             0123456789012345
+        //             |         ^
+        let content = "    hoge+++  foo".replace('+', "\n");
+        assert_eq!(remover.format(&content, 10), (10, 10));
 
-        //                          10        20
-        //                 0123456789012345
-        //                 |        ^
-        let mut content = "    hoge+++  foo".replace('+', "\n");
-        assert_eq!(remover.format(&mut content, 9), 9);
-        assert_eq!(content, "    hoge+++  foo".replace('+', "\n"));
+        //                      10
+        //             0123456789012345
+        //             |        ^
+        let content = "    hoge+++  foo".replace('+', "\n");
+        assert_eq!(remover.format(&content, 9), (9, 9));
 
-        //                          10        20
-        //                 0123456789012345
-        //                 |         ^
-        let mut content = "    hoge++ +  foo".replace('+', "\n");
-        assert_eq!(remover.format(&mut content, 10), 10);
-        assert_eq!(content, "    hoge++ +  foo".replace('+', "\n"));
+        //                      10
+        //             01234567890123456
+        //             |         ^
+        let content = "    hoge++ +  foo".replace('+', "\n");
+        assert_eq!(remover.format(&content, 10), (10, 10));
     }
 }
