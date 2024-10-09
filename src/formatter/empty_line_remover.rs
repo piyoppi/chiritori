@@ -17,12 +17,10 @@ impl Formatter for EmptyLineRemover {
         }
 
         let is_next_line_empty = find_next_line_break_pos(content, bytes, byte_pos)
-            .map(|pos| find_next_line_break_pos(content, bytes, pos + 1))
-            .flatten()
-            == None;
+            .and_then(|pos| find_next_line_break_pos(content, bytes, pos + 1))
+            .is_none();
         let is_prev_line_empty = find_prev_line_break_pos(content, bytes, byte_pos)
-            .map(|pos| find_prev_line_break_pos(content, bytes, pos))
-            .flatten()
+            .and_then(|pos| find_prev_line_break_pos(content, bytes, pos))
             .map_or(true, |pos| pos <= next_byte_pos);
 
         if is_next_line_empty && is_prev_line_empty {

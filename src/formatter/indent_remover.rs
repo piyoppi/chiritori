@@ -15,7 +15,7 @@ impl Formatter for IndentRemover {
                 break false;
             }
 
-            cursor = cursor - 1;
+            cursor -= 1;
 
             if cursor <= next_byte_pos {
                 break false;
@@ -28,7 +28,7 @@ impl Formatter for IndentRemover {
                     Some(b' ') => {}
                     Some(b'\t') => {}
                     Some(b'\n') => {
-                        cursor = cursor + 1;
+                        cursor += 1;
                         break true;
                     }
                     None => break false,
@@ -41,7 +41,7 @@ impl Formatter for IndentRemover {
             return (cursor, byte_pos);
         }
 
-        return (byte_pos, byte_pos);
+        (byte_pos, byte_pos)
     }
 }
 

@@ -8,8 +8,7 @@ impl Formatter for PrevLineBreakRemover {
         let bytes = content.as_bytes();
 
         let line_break_pos = find_prev_line_break_pos(content, bytes, byte_pos)
-            .map(|pos| find_prev_line_break_pos(content, bytes, pos))
-            .flatten();
+            .and_then(|pos| find_prev_line_break_pos(content, bytes, pos));
 
         if let Some(line_break_pos) = line_break_pos {
             if line_break_pos <= next_byte_pos {

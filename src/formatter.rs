@@ -10,8 +10,8 @@ pub trait Formatter {
 
 pub fn format(
     content: &str,
-    removed_pos: &Vec<usize>,
-    formatters: &Vec<Box<dyn self::Formatter>>,
+    removed_pos: &[usize],
+    formatters: &[Box<dyn self::Formatter>],
 ) -> String {
     let mut iter = removed_pos.iter().rev().peekable();
 
@@ -24,7 +24,7 @@ pub fn format(
         }
 
         formatters.iter().fold(*pos, |pos, f| {
-            let (start, end) = f.format(&mut content, pos, next_pos);
+            let (start, end) = f.format(&content, pos, next_pos);
             let start = std::cmp::max(start, next_pos);
             content.replace_range(start..end, "");
 
@@ -63,7 +63,7 @@ mod tests {
         //             01234567890123456789012345678901234567890123456789012345
         //                                ^                             ^
         let content = "<div>+    hoge+    +    foo+    bar+    baz++    +</div>".replace('+', "\n");
-        let removed_pos = &vec![19, 49];
+        let removed_pos = [19, 49];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -79,7 +79,7 @@ mod tests {
         //             0123456789012345678901
         //                          ^
         let content = "    hoge+    +    foo+".replace('+', "\n");
-        let removed_pos = &vec![13];
+        let removed_pos = [13];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -96,7 +96,7 @@ mod tests {
         //             01234567890123456789012
         //                           ^
         let content = "    hoge++    +    foo+".replace('+', "\n");
-        let removed_pos = &vec![14];
+        let removed_pos = [14];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -113,7 +113,7 @@ mod tests {
         //             01234567890123456789012
         //                           ^
         let content = "    hoge+    ++    foo+".replace('+', "\n");
-        let removed_pos = &vec![14];
+        let removed_pos = [14];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -130,7 +130,7 @@ mod tests {
         //             01234567890123456789012
         //                            ^
         let content = "    hoge+ +    + +    foo+".replace('+', "\n");
-        let removed_pos = &vec![15];
+        let removed_pos = [15];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -143,12 +143,12 @@ mod tests {
         //             0123456789012345678901234567890123456789012
         //                                       ^    ^
         let content = "+<div>+    +    +    +    +    +</div>".replace('+', "\n");
-        let removed_pos = &vec![26, 31];
+        let removed_pos = [26, 31];
         assert_eq!(
             format(
                 &content,
                 &removed_pos,
-                &vec![Box::new(prev_line_break_remover::PrevLineBreakRemover {}),]
+                &[Box::new(prev_line_break_remover::PrevLineBreakRemover {}),]
             ),
             //123456789012345678901234567890123456789012345
             "+<div>+    +    ++    +</div>".replace('+', "\n")
@@ -158,12 +158,12 @@ mod tests {
         //             012345678901234567890123
         //                          ^
         let content = "+<div>+hoge++++baz</div>".replace('+', "\n");
-        let removed_pos = &vec![13];
+        let removed_pos = [13];
         assert_eq!(
             format(
                 &content,
                 &removed_pos,
-                &vec![
+                &[
                     Box::new(indent_remover::IndentRemover {}),
                     Box::new(prev_line_break_remover::PrevLineBreakRemover {}),
                 ]

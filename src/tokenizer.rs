@@ -46,23 +46,20 @@ pub fn tokenize<'a, 'b, 'c>(
          (byte_pos, c)| {
             let (token_kind, next_state) = get_state(&c, delimiter_start, delimiter_end, state);
 
-            match token_kind {
-                Some(token_kind) => {
-                    if (byte_pos - byte_start_pos) > 0 {
-                        tokens.push(Token {
-                            value: &source[byte_start_pos..byte_pos],
-                            kind: token_kind,
-                            start: start_pos,
-                            byte_start: byte_start_pos,
-                            end: current,
-                            byte_end: byte_pos,
-                        });
-                    }
-
-                    start_pos = current;
-                    byte_start_pos = byte_pos;
+            if let Some(token_kind) = token_kind {
+                if (byte_pos - byte_start_pos) > 0 {
+                    tokens.push(Token {
+                        value: &source[byte_start_pos..byte_pos],
+                        kind: token_kind,
+                        start: start_pos,
+                        byte_start: byte_start_pos,
+                        end: current,
+                        byte_end: byte_pos,
+                    });
                 }
-                None => {}
+
+                start_pos = current;
+                byte_start_pos = byte_pos;
             };
 
             (tokens, next_state, byte_start_pos, start_pos, current + 1)
@@ -205,7 +202,7 @@ mod tests {
             delimiter_end: "]",
         };
         assert_eq!(
-            tokenize(&"r", "[", "]"),
+            tokenize("r", "[", "]"),
             vec![Token {
                 value: "r",
                 kind: TokenKind::Text,
@@ -216,7 +213,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            tokenize(&"[r]", "[", "]"),
+            tokenize("[r]", "[", "]"),
             vec![Token {
                 value: "[r]",
                 kind: TokenKind::Element(default_element.clone()),
@@ -227,7 +224,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            tokenize(&"[r]", "[", "]"),
+            tokenize("[r]", "[", "]"),
             vec![Token {
                 value: "[r]",
                 kind: TokenKind::Element(default_element.clone()),
@@ -238,7 +235,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            tokenize(&"aaa[r]g", "[", "]"),
+            tokenize("aaa[r]g", "[", "]"),
             vec![
                 Token {
                     value: "aaa",
@@ -267,7 +264,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            tokenize(&"[r]g", "[", "]"),
+            tokenize("[r]g", "[", "]"),
             vec![
                 Token {
                     value: "[r]",
@@ -288,7 +285,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            tokenize(&"[r]g[r]", "[", "]"),
+            tokenize("[r]g[r]", "[", "]"),
             vec![
                 Token {
                     value: "[r]",
@@ -317,7 +314,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            tokenize(&"[r][r]", "[", "]"),
+            tokenize("[r][r]", "[", "]"),
             vec![
                 Token {
                     value: "[r]",
@@ -338,7 +335,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            tokenize(&"[r]こんにちは[r]b", "[", "]"),
+            tokenize("[r]こんにちは[r]b", "[", "]"),
             vec![
                 Token {
                     value: "[r]",
@@ -375,7 +372,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            tokenize(&"r[g", "[", "]"),
+            tokenize("r[g", "[", "]"),
             vec![Token {
                 value: "r[g",
                 kind: TokenKind::Text,
@@ -410,7 +407,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            tokenize(&"foo<div><!--r-->gb", "<!--", "-->"),
+            tokenize("foo<div><!--r-->gb", "<!--", "-->"),
             vec![
                 Token {
                     value: "foo<div>",

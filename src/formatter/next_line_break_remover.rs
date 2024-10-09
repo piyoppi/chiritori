@@ -7,8 +7,7 @@ impl Formatter for NextLineBreakRemover {
         let bytes = content.as_bytes();
 
         let line_break_pos = find_next_line_break_pos(content, bytes, byte_pos)
-            .map(|pos| find_next_line_break_pos(content, bytes, pos + 1))
-            .flatten();
+            .and_then(|pos| find_next_line_break_pos(content, bytes, pos + 1));
 
         if let Some(line_break_pos) = line_break_pos {
             (byte_pos, line_break_pos)
