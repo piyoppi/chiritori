@@ -29,8 +29,8 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
         tokenizer::TokenKind::Element(element) => {
             let target = token
                 .value
-                .trim_start_matches(&element.delimiter_start)
-                .trim_end_matches(&element.delimiter_end);
+                .trim_start_matches(element.delimiter_start)
+                .trim_end_matches(element.delimiter_end);
 
             let values =
                 target
@@ -74,23 +74,16 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
                                 }
                                 _ => acc.1 = State::AttrWithNoQuote,
                             },
-                            State::AttrWithDoubleQuote(start) => match val {
-                                '"' => {
-                                    acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
-                                    acc.1 = State::NameBegin
-                                }
-                                _ => {}
+                            State::AttrWithDoubleQuote(start) => if val == '"' {
+                                acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
+                                acc.1 = State::NameBegin
                             },
-                            State::AttrWithSingleQuote(start) => match val {
-                                '\'' => {
-                                    acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
-                                    acc.1 = State::NameBegin
-                                }
-                                _ => {}
+                            State::AttrWithSingleQuote(start) => if val == '\'' {
+                                acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
+                                acc.1 = State::NameBegin
                             },
-                            State::AttrWithNoQuote => match val {
-                                ' ' => acc.1 = State::NameBegin,
-                                _ => {}
+                            State::AttrWithNoQuote => if val == ' ' {
+                                acc.1 = State::NameBegin
                             },
                             State::ParseError => {}
                         }

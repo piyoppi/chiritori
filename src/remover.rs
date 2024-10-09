@@ -13,20 +13,19 @@ pub struct RemoveMarker {
 }
 
 fn remove_marker(
-    contents: &Vec<ContentPart>,
+    contents: &[ContentPart],
     builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>,
 ) -> Vec<RemoveMarker> {
     contents.iter().fold(vec![], |mut acc, c| {
         if let parser::ContentPart::Element(el) = c {
             let builder = builder_map.get(el.start_element.name);
             let marker = builder
-                .map(|builder| {
-                    builder.create_remove_marker(&el.start_token, &el.start_element, &el.end_token)
-                })
-                .flatten();
+                .and_then(|builder| {
+                    builder.create_remove_marker(el.start_token, &el.start_element, el.end_token)
+                });
 
-            if marker.is_some() {
-                acc.push(marker.unwrap());
+            if let Some(marker) = marker {
+                acc.push(marker);
             } else {
                 remove_marker(&el.children, builder_map)
                     .into_iter()
@@ -53,7 +52,7 @@ pub fn remove(
     (new_content, markers)
 }
 
-pub fn get_removed_pos(markers: &Vec<RemoveMarker>) -> Vec<usize> {
+pub fn get_removed_pos(markers: &[RemoveMarker]) -> Vec<usize> {
     markers
         .iter()
         .fold((vec![], 0), |mut acc, marker| {

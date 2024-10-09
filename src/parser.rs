@@ -53,7 +53,7 @@ fn tree<'a, 'b, 'c, 'd>(
 
     loop {
         let t = tokens.get(cursor);
-        cursor = cursor + 1;
+        cursor += 1;
 
         if t.is_none() {
             break (cursor, None);
@@ -88,8 +88,8 @@ fn tree<'a, 'b, 'c, 'd>(
                             return State::Content(vec![ContentPart::Element(Element {
                                 start_element: el,
                                 start_token: t,
-                                end_token: end_token,
-                                children: children,
+                                end_token,
+                                children,
                             })]);
                         } else {
                             let mut parts = vec![ContentPart::Text(Text { token: t })];
