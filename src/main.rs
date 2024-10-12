@@ -1,6 +1,5 @@
+use chiritori::{ChiritoriConfiguration, TimeLimitedConfiguration};
 use clap::Parser;
-use formatter::Formatter;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 mod element_parser;
@@ -8,6 +7,7 @@ mod formatter;
 mod parser;
 mod remover;
 mod tokenizer;
+mod chiritori;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -61,37 +61,21 @@ fn main() {
             .expect("something went wrong reading the file");
     }
 
-    let mut builder_map: HashMap<
-        &str,
-        Box<dyn remover::remove_marker_builder::RemoveMarkerBuilder>,
-    > = HashMap::new();
-    builder_map.insert(
-        args.time_limited_tag_name.as_str(),
-        Box::new(remover::time_limited_remover::TimeLimitedRemover {
-            current_time: args
+    let config = ChiritoriConfiguration {
+        delimiter_start: args.delimiter_start,
+        delimiter_end: args.delimiter_end,
+        time_limited_configuration: TimeLimitedConfiguration {
+            tag_name: args.time_limited_tag_name,
+            time_offset: args.time_limited_time_offset,
+            current: args
                 .time_limited_current
                 .parse::<chrono::DateTime<chrono::Local>>()
                 .unwrap_or(chrono::Local::now()),
-            time_offset: args.time_limited_time_offset.to_string(),
-        }),
-    );
 
-    let tokens = tokenizer::tokenize(
-        &content,
-        args.delimiter_start.as_str(),
-        args.delimiter_end.as_str(),
-    );
+        }
+    };
 
-    let (removed, markers) = remover::remove(parser::parse(&tokens), &content, &builder_map);
-
-    let removed_pos = remover::get_removed_pos(&markers);
-    let formatter: Vec<Box<dyn Formatter>> = vec![
-        Box::new(formatter::indent_remover::IndentRemover {}),
-        Box::new(formatter::empty_line_remover::EmptyLineRemover {}),
-        Box::new(formatter::prev_line_break_remover::PrevLineBreakRemover {}),
-        Box::new(formatter::next_line_break_remover::NextLineBreakRemover {}),
-    ];
-    let cleaned = formatter::format(&removed, &removed_pos, &formatter);
+    let cleaned = chiritori::clean(content, config);
 
     if let Some(output) = args.output {
         let mut f = File::create(output).expect("file not found");
