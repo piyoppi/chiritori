@@ -37,11 +37,11 @@ impl Default for TimeLimitedConfiguration {
 pub fn clean(content: String, config: ChiritoriConfiguration) -> String {
     let mut builder_map: HashMap<
         &str,
-        Box<dyn remover::remove_marker_builder::RemoveMarkerBuilder>,
+        Box<dyn remover::removal_evaluator::RemovalEvaluator>,
     > = HashMap::new();
     builder_map.insert(
         &config.time_limited_configuration.tag_name,
-        Box::new(remover::time_limited_remover::TimeLimitedRemover {
+        Box::new(remover::time_limited_evaluator::TimeLimitedEvaluator {
             current_time: config.time_limited_configuration.current,
             time_offset: config.time_limited_configuration.time_offset,
         }),

@@ -1,9 +1,11 @@
-pub mod remove_marker_builder;
-pub mod time_limited_remover;
+pub mod removal_evaluator;
+pub mod time_limited_evaluator;
 
-use self::remove_marker_builder::RemoveMarkerBuilder;
+use removal_evaluator::RemovalEvaluator;
+use crate::element_parser::Element;
 use crate::parser;
 use crate::parser::ContentPart;
+use crate::tokenizer::Token;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -12,35 +14,10 @@ pub struct RemoveMarker {
     pub byte_end: usize,
 }
 
-fn remove_marker(
-    contents: &[ContentPart],
-    builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>,
-) -> Vec<RemoveMarker> {
-    contents.iter().fold(vec![], |mut acc, c| {
-        if let parser::ContentPart::Element(el) = c {
-            let builder = builder_map.get(el.start_element.name);
-            let marker = builder
-                .and_then(|builder| {
-                    builder.create_remove_marker(el.start_token, &el.start_element, el.end_token)
-                });
-
-            if let Some(marker) = marker {
-                acc.push(marker);
-            } else {
-                remove_marker(&el.children, builder_map)
-                    .into_iter()
-                    .for_each(|m| acc.push(m));
-            }
-        }
-
-        acc
-    })
-}
-
 pub fn remove(
     content: Vec<ContentPart>,
     raw: &str,
-    builder_map: &HashMap<&str, Box<dyn RemoveMarkerBuilder>>,
+    builder_map: &HashMap<&str, Box<dyn RemovalEvaluator>>,
 ) -> (String, Vec<RemoveMarker>) {
     let markers = remove_marker(&content, builder_map);
     let mut new_content = raw.to_string();
@@ -62,8 +39,45 @@ pub fn get_removed_pos(markers: &[RemoveMarker]) -> Vec<usize> {
         .0
 }
 
+fn remove_marker(
+    contents: &[ContentPart],
+    evaluator_map: &HashMap<&str, Box<dyn RemovalEvaluator>>,
+) -> Vec<RemoveMarker> {
+    contents.iter().fold(vec![], |mut acc, c| {
+        if let parser::ContentPart::Element(el) = c {
+            let evaluator = evaluator_map.get(el.start_element.name);
+            let marker = evaluator
+                .and_then(|evaluator| {
+                    match evaluator.is_removal(&el.start_element) {
+                        true => Some(build_remove_marker(&el.start_element, el.start_token, el.end_token)),
+                        false => None
+                    }
+                });
+
+            if let Some(marker) = marker {
+                acc.push(marker);
+            } else {
+                remove_marker(&el.children, evaluator_map)
+                    .into_iter()
+                    .for_each(|m| acc.push(m));
+            }
+        }
+
+        acc
+    })
+}
+
+fn build_remove_marker(_start_el: &Element, start_token: &Token, end_token: &Token) -> RemoveMarker {
+    RemoveMarker {
+        byte_start: start_token.byte_start,
+        byte_end: end_token.byte_end,
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use time_limited_evaluator::TimeLimitedEvaluator;
+
     use super::*;
     use crate::tokenizer;
 
@@ -75,10 +89,10 @@ mod tests {
         let tokens = tokenizer::tokenize(content, "<", ">");
         let contents = parser::parse(&tokens);
 
-        let mut builder_map: HashMap<&str, Box<dyn RemoveMarkerBuilder>> = HashMap::new();
+        let mut builder_map: HashMap<&str, Box<dyn RemovalEvaluator>> = HashMap::new();
         builder_map.insert(
             "tl",
-            Box::new(time_limited_remover::TimeLimitedRemover {
+            Box::new(TimeLimitedEvaluator {
                 current_time: chrono::Local::now(),
                 time_offset: "+00:00".to_string(),
             }),
@@ -114,10 +128,10 @@ mod tests {
 </div>
 ";
 
-        let mut builder_map: HashMap<&str, Box<dyn RemoveMarkerBuilder>> = HashMap::new();
+        let mut builder_map: HashMap<&str, Box<dyn RemovalEvaluator>> = HashMap::new();
         builder_map.insert(
             "time-limited",
-            Box::new(time_limited_remover::TimeLimitedRemover {
+            Box::new(TimeLimitedEvaluator {
                 current_time: chrono::Local::now(),
                 time_offset: "+00:00".to_string(),
             }),
