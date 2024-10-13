@@ -1,4 +1,4 @@
-pub fn find_next_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize) -> Option<usize> {
+pub fn find_next_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize, pause_on_char: bool) -> Option<usize> {
     let mut cursor = byte_pos;
 
     loop {
@@ -9,14 +9,18 @@ pub fn find_next_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize) ->
         match check(content, bytes, &cursor) {
             CheckResult::Skip => {}
             CheckResult::Found => break Some(cursor),
-            CheckResult::None => break None,
+            CheckResult::None => {
+                if pause_on_char {
+                    break None
+                }
+            },
         }
 
-        cursor = cursor + 1;
+        cursor += 1;
     }
 }
 
-pub fn find_prev_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize) -> Option<usize> {
+pub fn find_prev_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize, pause_on_char: bool) -> Option<usize> {
     let mut cursor = byte_pos;
 
     if cursor == 0 {
@@ -24,7 +28,7 @@ pub fn find_prev_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize) ->
     }
 
     loop {
-        cursor = cursor - 1;
+        cursor -= 1;
 
         if cursor >= bytes.len() || cursor == 0 {
             break None;
@@ -33,11 +37,16 @@ pub fn find_prev_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize) ->
         match check(content, bytes, &cursor) {
             CheckResult::Skip => {}
             CheckResult::Found => break Some(cursor),
-            CheckResult::None => break None,
+            CheckResult::None => {
+                if pause_on_char {
+                    break None
+                }
+            },
         }
     }
 }
 
+#[derive(Debug)]
 enum CheckResult {
     Skip,
     Found,
@@ -48,7 +57,6 @@ fn check(content: &str, bytes: &[u8], cursor: &usize) -> CheckResult {
     if !content.is_char_boundary(*cursor) {
         return CheckResult::Skip;
     }
-
     match bytes.get(*cursor) {
         Some(b' ') => CheckResult::Skip,
         Some(b'\n') => CheckResult::Found,
@@ -67,7 +75,7 @@ mod tests {
         //                          ^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_next_line_break_pos(&content, content.as_bytes(), 13),
+            find_next_line_break_pos(&content, content.as_bytes(), 13, true),
             Some(13)
         );
 
@@ -75,7 +83,7 @@ mod tests {
         //                         ^^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_next_line_break_pos(&content, content.as_bytes(), 12),
+            find_next_line_break_pos(&content, content.as_bytes(), 12, true),
             Some(13)
         );
 
@@ -83,7 +91,7 @@ mod tests {
         //                            ^^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_next_line_break_pos(&content, content.as_bytes(), 15),
+            find_next_line_break_pos(&content, content.as_bytes(), 15, true),
             Some(16)
         );
 
@@ -91,7 +99,7 @@ mod tests {
         //                              ^
         let content = "    hoge+    あ  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_next_line_break_pos(&content, content.as_bytes(), 14),
+            find_next_line_break_pos(&content, content.as_bytes(), 14, true),
             Some(18)
         );
 
@@ -99,7 +107,7 @@ mod tests {
         //                                    ^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_next_line_break_pos(&content, content.as_bytes(), 23),
+            find_next_line_break_pos(&content, content.as_bytes(), 23, true),
             None
         );
     }
@@ -110,7 +118,7 @@ mod tests {
         //                     ^    ^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_prev_line_break_pos(&content, content.as_bytes(), 13),
+            find_prev_line_break_pos(&content, content.as_bytes(), 13, true),
             Some(8)
         );
 
@@ -118,7 +126,7 @@ mod tests {
         //                          ^^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_prev_line_break_pos(&content, content.as_bytes(), 14),
+            find_prev_line_break_pos(&content, content.as_bytes(), 14, true),
             Some(13)
         );
 
@@ -126,7 +134,7 @@ mod tests {
         //                             ^ ^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_prev_line_break_pos(&content, content.as_bytes(), 18),
+            find_prev_line_break_pos(&content, content.as_bytes(), 18, true),
             Some(16)
         );
 
@@ -134,7 +142,7 @@ mod tests {
         //                             ^
         let content = "    hoge+    +  + あ   foo</div>".replace('+', "\n");
         assert_eq!(
-            find_prev_line_break_pos(&content, content.as_bytes(), 19),
+            find_prev_line_break_pos(&content, content.as_bytes(), 19, true),
             None
         );
 
@@ -142,7 +150,23 @@ mod tests {
         //                                    ^
         let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
         assert_eq!(
-            find_prev_line_break_pos(&content, content.as_bytes(), 23),
+            find_prev_line_break_pos(&content, content.as_bytes(), 23, true),
+            None
+        );
+
+        //             012345678901234567890123456789
+        //                                    ^
+        let content = "    hoge+    +  +    foo</div>".replace('+', "\n");
+        assert_eq!(
+            find_prev_line_break_pos(&content, content.as_bytes(), 23, false),
+            Some(16)
+        );
+
+        //             012345678901234567890123456789
+        //                                    ^
+        let content = "    hoge             foo</div>".replace('+', "\n");
+        assert_eq!(
+            find_prev_line_break_pos(&content, content.as_bytes(), 23, true),
             None
         );
     }

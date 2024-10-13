@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
-use crate::{formatter::{self, Formatter}, parser, remover, tokenizer};
+use std::{collections::HashMap, rc::Rc};
+use crate::{code::{formatter::{self, Formatter}, remover::{self, marker::{availability::{block_marker_availability::BlockMarkerAvailability, open_structure_marker_availability::OpenStructureMarkerAvailability}, builder::{block_marker_builder::BlockMarkerBuilder, open_structure_marker_builder::OpenStructureMarkerBuilder}, factory::RemoveStrategies}}}, parser, tokenizer};
 
 pub struct ChiritoriConfiguration {
     pub delimiter_start: String,
@@ -34,7 +33,14 @@ impl Default for TimeLimitedConfiguration {
     }
 }
 
-pub fn clean(content: String, config: ChiritoriConfiguration) -> String {
+pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
+    let tokens = tokenizer::tokenize(
+        &content,
+        &config.delimiter_start,
+        &config.delimiter_end,
+    );
+
+    let parsed = parser::parse(&tokens);
     let mut builder_map: HashMap<
         &str,
         Box<dyn remover::removal_evaluator::RemovalEvaluator>,
@@ -47,15 +53,20 @@ pub fn clean(content: String, config: ChiritoriConfiguration) -> String {
         }),
     );
 
-    let tokens = tokenizer::tokenize(
-        &content,
-        &config.delimiter_start,
-        &config.delimiter_end,
-    );
+    let remove_strategy_map: RemoveStrategies = vec![
+        (
+            Box::new(OpenStructureMarkerAvailability::default()),
+            Box::new(OpenStructureMarkerBuilder {
+                content: Rc::clone(&content)
+            })
+        ),
+        (
+            Box::new(BlockMarkerAvailability::default()),
+            Box::new(BlockMarkerBuilder::default())
+        ),
+    ];
 
-    let parsed = parser::parse(&tokens);
-
-    let (removed, markers) = remover::remove(parsed, &content, &builder_map);
+    let (removed, markers) = remover::remove(parsed, &content, &builder_map, &remove_strategy_map);
 
     let removed_pos = remover::get_removed_pos(&markers);
     let formatter: Vec<Box<dyn Formatter>> = vec![
@@ -125,7 +136,7 @@ mod tests {
 </html>"#);
 
         let config = create_test_config();
-        let result = clean(content, config);
+        let result = clean(content.into(), config);
 
         assert_eq!(result, expected);
     }

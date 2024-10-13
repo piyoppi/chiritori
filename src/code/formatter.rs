@@ -2,7 +2,6 @@ pub mod empty_line_remover;
 pub mod indent_remover;
 pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
-pub mod utils;
 
 pub trait Formatter {
     fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize);
