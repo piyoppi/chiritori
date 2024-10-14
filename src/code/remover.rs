@@ -9,6 +9,12 @@ use crate::parser;
 use crate::parser::ContentPart;
 use std::collections::HashMap;
 
+#[derive(Debug, PartialEq)]
+pub enum RemovedMarker {
+    Block(usize),
+    OpenStructure(usize, usize)
+}
+
 pub fn remove(
     content: Vec<ContentPart>,
     raw: &str,
@@ -21,27 +27,29 @@ pub fn remove(
     for marker in markers.iter().rev() {
         match marker {
             RemoveMarker::Block(range) => new_content.replace_range(range.byte_start..range.byte_end, ""),
-            RemoveMarker::OpenStructure(v) => v.iter().for_each(|range| new_content.replace_range(range.byte_start..range.byte_end, ""))
+            RemoveMarker::OpenStructure(start, end) => [end, start].iter().for_each(|range| new_content.replace_range(range.byte_start..range.byte_end, ""))
         };
     }
 
     (new_content, markers)
 }
 
-pub fn get_removed_pos(markers: &[RemoveMarker]) -> Vec<usize> {
+pub fn get_removed_pos(markers: &[RemoveMarker]) -> Vec<RemovedMarker> {
     markers
         .iter()
         .fold((vec![], 0), |(mut positions, mut removed_len), marker| {
             match marker {
                 RemoveMarker::Block(range) => {
-                    positions.push(range.byte_start - removed_len);
+                    positions.push(RemovedMarker::Block(range.byte_start - removed_len));
                     removed_len += range.byte_end - range.byte_start;
                 },
-                RemoveMarker::OpenStructure(v) => {
-                    v.iter().for_each(|range| {
-                        positions.push(range.byte_start - removed_len);
-                        removed_len += range.byte_end - range.byte_start;
-                    });
+                RemoveMarker::OpenStructure(start, end) => {
+                    positions.push(RemovedMarker::OpenStructure(
+                        start.byte_start - removed_len,
+                        end.byte_start - removed_len + start.byte_end - start.byte_start
+                    ));
+                    removed_len += start.byte_end - start.byte_start;
+                    removed_len += end.byte_end - end.byte_start;
                 }
             }
             (positions, removed_len)
@@ -260,7 +268,7 @@ if (foo) {
 "
                 .to_string(),
                 vec![
-                    RemoveMarker::OpenStructure(vec![
+                    RemoveMarker::OpenStructure(
                         Range {
                             byte_start: 136,
                             byte_end: 157,
@@ -269,7 +277,7 @@ if (foo) {
                             byte_start: 18,
                             byte_end: 87,
                         }
-                    ])
+                    )
                 ]
             )
         );
@@ -301,6 +309,6 @@ if (foo) {
                 byte_end: 9,
             }),
         ];
-        assert_eq!(get_removed_pos(&markers), vec![1, 3, 5]);
+        assert_eq!(get_removed_pos(&markers), vec![RemovedMarker::Block(1), RemovedMarker::Block(3), RemovedMarker::Block(5)]);
     }
 }

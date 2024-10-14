@@ -11,5 +11,5 @@ pub struct Range {
 #[derive(Debug, PartialEq)]
 pub enum RemoveMarker {
     Block(Range),
-    OpenStructure(Vec<Range>)
+    OpenStructure(Range, Range)
 }

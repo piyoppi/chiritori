@@ -1,37 +1,65 @@
+use super::remover::RemovedMarker;
+
 pub mod empty_line_remover;
 pub mod indent_remover;
 pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
+pub mod structure_indent_remover;
 
 pub trait Formatter {
     fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize);
 }
 
+pub trait MultiFormatter {
+    fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> Vec<(usize, usize)>;
+}
+
 pub fn format(
     content: &str,
-    removed_pos: &[usize],
+    removed_pos: &[RemovedMarker],
     formatters: &[Box<dyn self::Formatter>],
 ) -> String {
-    let mut iter = removed_pos.iter().rev().peekable();
+    let mut removed_pos_iter = removed_pos.iter().rev().peekable();
 
     let mut content = content.to_string();
-    while let Some(pos) = iter.next() {
-        let next_pos = iter.peek().map_or(0, |p| **p);
 
-        if !content.is_char_boundary(*pos) {
-            panic!("Invalid byte position: {}", pos);
-        }
-
-        formatters.iter().fold(*pos, |pos, f| {
-            let (start, end) = f.format(&content, pos, next_pos);
-            let start = std::cmp::max(start, next_pos);
-            content.replace_range(start..end, "");
-
-            start
+    while let Some(pos) = removed_pos_iter.next() {
+        let next_pos: usize = removed_pos_iter.peek().map_or(0, |p| match p {
+            RemovedMarker::Block(pos) => *pos,
+            RemovedMarker::OpenStructure(pos) => *pos.last().unwrap_or(&0)
         });
+
+        match pos {
+            RemovedMarker::Block(pos) => {
+                format_block(&mut content, *pos, next_pos, formatters);
+            },
+            RemovedMarker::OpenStructure(pos) => {
+
+            }
+        }
     }
 
     content
+}
+
+pub fn format_block(content: &mut String, pos: usize, next_pos: usize, formatters: &[Box<dyn self::Formatter>]) {
+    if !content.is_char_boundary(pos) {
+        panic!("Invalid byte position: {}", pos);
+    }
+
+    formatters.iter().fold(pos, |pos, f| {
+        let (start, end) = f.format(content, pos, next_pos);
+        let start = std::cmp::max(start, next_pos);
+        content.replace_range(start..end, "");
+
+        start
+    });
+}
+
+pub fn format_open_structure(content: &mut str, pos: Vec<usize>, next_pos: usize, formatters: &[Box<dyn self::Formatter>]) {
+    pos.iter().for_each(|v| {
+
+    })
 }
 
 #[cfg(test)]
@@ -62,7 +90,7 @@ mod tests {
         //             01234567890123456789012345678901234567890123456789012345
         //                                ^                             ^
         let content = "<div>+    hoge+    +    foo+    bar+    baz++    +</div>".replace('+', "\n");
-        let removed_pos = [19, 49];
+        let removed_pos = [RemovedMarker::Block(19), RemovedMarker::Block(49)];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -78,7 +106,7 @@ mod tests {
         //             0123456789012345678901
         //                          ^
         let content = "    hoge+    +    foo+".replace('+', "\n");
-        let removed_pos = [13];
+        let removed_pos = [RemovedMarker::Block(13)];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -95,7 +123,7 @@ mod tests {
         //             01234567890123456789012
         //                           ^
         let content = "    hoge++    +    foo+".replace('+', "\n");
-        let removed_pos = [14];
+        let removed_pos = [RemovedMarker::Block(14)];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -112,7 +140,7 @@ mod tests {
         //             01234567890123456789012
         //                           ^
         let content = "    hoge+    ++    foo+".replace('+', "\n");
-        let removed_pos = [14];
+        let removed_pos = [RemovedMarker::Block(14)];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -129,7 +157,7 @@ mod tests {
         //             01234567890123456789012
         //                            ^
         let content = "    hoge+ +    + +    foo+".replace('+', "\n");
-        let removed_pos = [15];
+        let removed_pos = [RemovedMarker::Block(15)];
         assert_eq!(
             format(&content, &removed_pos, &strategy),
             //12345678901234567890123456789012345678901234567
@@ -142,7 +170,7 @@ mod tests {
         //             0123456789012345678901234567890123456789012
         //                                       ^    ^
         let content = "+<div>+    +    +    +    +    +</div>".replace('+', "\n");
-        let removed_pos = [26, 31];
+        let removed_pos = [RemovedMarker::Block(26), RemovedMarker::Block(31)];
         assert_eq!(
             format(
                 &content,
@@ -157,7 +185,7 @@ mod tests {
         //             012345678901234567890123
         //                          ^
         let content = "+<div>+hoge++++baz</div>".replace('+', "\n");
-        let removed_pos = [13];
+        let removed_pos = [RemovedMarker::Block(13)];
         assert_eq!(
             format(
                 &content,

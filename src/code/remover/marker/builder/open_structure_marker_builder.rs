@@ -15,16 +15,16 @@ impl MarkerBuilder for OpenStructureMarkerBuilder {
             .and_then(|pos| find_prev_line_break_pos(self.content.as_ref(), bytes, pos, false));
 
         match (start_el_remove_end_pos, end_el_remove_start_pos) {
-            (Some(end), Some(start)) => RemoveMarker::OpenStructure(vec![
-                Range {
-                    byte_start: start + 1,
-                    byte_end: el.end_token.byte_end,
-                },
+            (Some(end), Some(start)) => RemoveMarker::OpenStructure(
                 Range {
                     byte_start: el.start_token.byte_start,
                     byte_end: end,
                 },
-            ]),
+                Range {
+                    byte_start: start + 1,
+                    byte_end: el.end_token.byte_end,
+                },
+            ),
             _ => RemoveMarker::Block(Range {
                 byte_start: el.start_token.byte_start,
                 byte_end: el.end_token.byte_end,
@@ -66,7 +66,7 @@ mod tests {
 
         assert_eq!(
             builder.build(&parsed),
-            RemoveMarker::OpenStructure(vec![
+            RemoveMarker::OpenStructure(
                 Range {
                     byte_start: 21,
                     byte_end: 32,
@@ -75,7 +75,7 @@ mod tests {
                     byte_start: 8,
                     byte_end: 18,
                 },
-            ])
+            )
         );
     }
 }
