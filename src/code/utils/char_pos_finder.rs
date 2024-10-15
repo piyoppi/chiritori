@@ -16,6 +16,24 @@ pub fn find_next_char_pos(content: &str, bytes: &[u8], byte_pos: usize) -> Optio
     }
 }
 
+pub fn find_prev_char_pos(content: &str, bytes: &[u8], byte_pos: usize) -> Option<usize> {
+    let mut cursor = byte_pos;
+
+    loop {
+        if cursor >= bytes.len() || cursor == 0 {
+            break None;
+        }
+
+        match check(content, bytes, &cursor) {
+            CheckResult::Skip => {}
+            CheckResult::Found => break Some(cursor),
+            CheckResult::None => break None
+        }
+
+        cursor -= 1;
+    }
+}
+
 #[derive(Debug)]
 enum CheckResult {
     Skip,

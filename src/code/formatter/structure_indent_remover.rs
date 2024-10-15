@@ -1,28 +1,32 @@
-use crate::code::utils::{char_pos_finder::find_next_char_pos, line_break_pos_finder::find_prev_line_break_pos};
-
+use crate::code::utils::{char_pos_finder::find_next_char_pos, line_break_pos_finder::{find_next_line_break_pos, find_prev_line_break_pos}};
 use super::StructureFormatter;
+use std::ops::Range;
 
 pub struct StructureIndentRemover {}
 
 impl StructureFormatter for StructureIndentRemover {
-    fn format(&self, content: &str, end_byte_pos: usize, start_byte_pos: usize) -> Vec<(usize, usize)> {
+    fn format(&self, content: &str, end_byte_pos: usize, start_byte_pos: usize) -> Vec<Range<usize>> {
         let bytes = content.as_bytes();
 
-        let indent_ofs = match find_prev_line_break_pos(content, bytes, end_byte_pos, true) {
-            Some(pos) => end_byte_pos - pos - 1,
+        let indent_ofs = match find_prev_line_break_pos(content, bytes, start_byte_pos, true) {
+            Some(pos) => start_byte_pos - pos - 1,
             None => 0
         };
-        let mut current_pos = end_byte_pos - indent_ofs - 1;
+        let mut current_pos = start_byte_pos + 1;
         let indent_len = get_indent_len(content, current_pos) - indent_ofs;
 
         let mut positions = vec![];
-        while start_byte_pos < current_pos {
-            let indent_start_pos = find_prev_line_break_pos(content, bytes, current_pos, false).map(|v| v + 1);
-
-            match indent_start_pos {
+        while end_byte_pos > current_pos {
+            let next_pos = find_next_line_break_pos(content, bytes, current_pos, false).map(|v| v + 1);
+            match next_pos {
                 Some(pos) => {
-                    positions.push((pos + indent_ofs, pos + indent_ofs + indent_len - 1));
-                    current_pos = pos - 1;
+                    if pos > end_byte_pos {
+                        break;
+                    }
+                    let start = current_pos + indent_ofs;
+                    let end = start + indent_len - 1;
+                    positions.push(start..end);
+                    current_pos = pos;
                 },
                 None => break
             }
@@ -64,7 +68,7 @@ mod tests {
         //             012345678901234567890123456
         //             |   ^<>     <>     ^
         let content = "foo++  fuga+  piyo++bar".replace('+', "\n");
-        assert_eq!(remover.format(&content, 19, 4), vec![(12, 13), (5, 6)]);
+        assert_eq!(remover.format(&content, 19, 4), vec![5..6, 12..13]);
 
 
         //    original          removed          formatted
@@ -83,6 +87,6 @@ mod tests {
         //             01234567890123456789012345678901234567
         //             |      ...^...<>     ...<>     ...^
         let content = "   foo+   +     fuga+     piyo+   +bar".replace('+', "\n");
-        assert_eq!(remover.format(&content, 34, 10), vec![(24, 25), (14, 15)]);
+        assert_eq!(remover.format(&content, 34, 10), vec![14..15, 24..25]);
     }
 }

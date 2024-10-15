@@ -1,5 +1,5 @@
 use std::{collections::HashMap, rc::Rc};
-use crate::{code::{formatter::{self, Formatter}, remover::{self, marker::{availability::{block_marker_availability::BlockMarkerAvailability, open_structure_marker_availability::OpenStructureMarkerAvailability}, builder::{block_marker_builder::BlockMarkerBuilder, open_structure_marker_builder::OpenStructureMarkerBuilder}, factory::RemoveStrategies}}}, parser, tokenizer};
+use crate::{code::{formatter::{self, Formatter, StructureFormatter}, remover::{self, marker::{availability::{block_marker_availability::BlockMarkerAvailability, open_structure_marker_availability::OpenStructureMarkerAvailability}, builder::{block_marker_builder::BlockMarkerBuilder, open_structure_marker_builder::OpenStructureMarkerBuilder}, factory::RemoveStrategies}}}, parser, tokenizer};
 
 pub struct ChiritoriConfiguration {
     pub delimiter_start: String,
@@ -75,8 +75,11 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
         Box::new(formatter::prev_line_break_remover::PrevLineBreakRemover {}),
         Box::new(formatter::next_line_break_remover::NextLineBreakRemover {}),
     ];
+    let structure_formatters: Vec<Box<dyn StructureFormatter>> = vec! [
 
-    formatter::format(&removed, &removed_pos, &formatter)
+    ];
+
+    formatter::format(&removed, &removed_pos, &formatter, &structure_formatters)
 }
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+use std::ops::Range;
 use super::remover::RemovedMarker;
 
 pub mod empty_line_remover;
@@ -10,31 +11,37 @@ pub trait Formatter {
     fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize);
 }
 
-pub trait MultiFormatter {
-    fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> Vec<(usize, usize)>;
+pub trait StructureFormatter {
+    fn format(&self, content: &str, end_byte_pos: usize, start_byte_pos: usize) -> Vec<Range<usize>>;
 }
 
 pub fn format(
     content: &str,
     removed_pos: &[RemovedMarker],
     formatters: &[Box<dyn self::Formatter>],
+    structure_formatters: &[Box<dyn self::StructureFormatter>],
 ) -> String {
     let mut removed_pos_iter = removed_pos.iter().rev().peekable();
 
     let mut content = content.to_string();
+    let mut open_structure_remove_range: Vec<Range<usize>> = vec![];
 
     while let Some(pos) = removed_pos_iter.next() {
-        let next_pos: usize = removed_pos_iter.peek().map_or(0, |p| match p {
-            RemovedMarker::Block(pos) => *pos,
-            RemovedMarker::OpenStructure(pos) => *pos.last().unwrap_or(&0)
-        });
-
         match pos {
             RemovedMarker::Block(pos) => {
+                let next_pos: usize = removed_pos_iter.peek().map_or(0, |p| match p {
+                    RemovedMarker::Block(pos) => *pos,
+                    RemovedMarker::OpenStructure(_, p2) => *p2
+                });
                 format_block(&mut content, *pos, next_pos, formatters);
             },
-            RemovedMarker::OpenStructure(pos) => {
-
+            RemovedMarker::OpenStructure(start, end) => {
+                let ranges = structure_formatters.iter().fold(vec![], |mut v, f| {
+                    v.extend(f.format(&content, *end, *start));
+                    v
+                });
+                merge_ranges(&mut open_structure_remove_range, ranges);
+                merge_overlapped_ranges(&mut open_structure_remove_range);
             }
         }
     }
@@ -42,7 +49,7 @@ pub fn format(
     content
 }
 
-pub fn format_block(content: &mut String, pos: usize, next_pos: usize, formatters: &[Box<dyn self::Formatter>]) {
+fn format_block(content: &mut String, pos: usize, next_pos: usize, formatters: &[Box<dyn Formatter>]) {
     if !content.is_char_boundary(pos) {
         panic!("Invalid byte position: {}", pos);
     }
@@ -56,11 +63,55 @@ pub fn format_block(content: &mut String, pos: usize, next_pos: usize, formatter
     });
 }
 
-pub fn format_open_structure(content: &mut str, pos: Vec<usize>, next_pos: usize, formatters: &[Box<dyn self::Formatter>]) {
-    pos.iter().for_each(|v| {
+fn merge_ranges(ranges: &mut Vec<Range<usize>>, new_ranges: Vec<Range<usize>>) {
+    let mut cursor = Some(ranges.len() - 1);
+    let mut new_ranges = new_ranges;
 
-    })
+    while !new_ranges.is_empty() {
+        let new_range = new_ranges.pop();
+
+        match new_range {
+            Some(new_range) => {
+                cursor = match cursor {
+                    Some(mut cursor) => loop {
+                                            let range = &ranges[cursor];
+                                            if range.start < new_range.start {
+                                                break Some(cursor);
+                                            }
+                                            if cursor == 0 {
+                                                break None;
+                                            }
+                                            cursor -= 1;
+                                        },
+                    None => None
+                };
+
+                match cursor {
+                    Some(cursor) => ranges.insert(cursor + 1, new_range),
+                    None => ranges.insert(0, new_range)
+                }
+
+            },
+            None => break
+        }
+    }
 }
+
+fn merge_overlapped_ranges(ranges: &mut Vec<Range<usize>>) {
+    let mut write_cursor = 0;
+    for read_cursor in 1..ranges.len() {
+        if ranges[write_cursor].end >= ranges[read_cursor].start {
+            ranges[write_cursor].end = ranges[write_cursor].end.max(ranges[read_cursor].end)
+        } else {
+            write_cursor += 1;
+            if write_cursor != read_cursor {
+                ranges[write_cursor] = std::mem::replace(&mut ranges[read_cursor], Range { start: 0, end: 0 });
+            }
+        }
+    }
+    ranges.truncate(write_cursor + 1);
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -92,7 +143,7 @@ mod tests {
         let content = "<div>+    hoge+    +    foo+    bar+    baz++    +</div>".replace('+', "\n");
         let removed_pos = [RemovedMarker::Block(19), RemovedMarker::Block(49)];
         assert_eq!(
-            format(&content, &removed_pos, &strategy),
+            format(&content, &removed_pos, &strategy, &[]),
             //12345678901234567890123456789012345678901234567
             "<div>+    hoge+    foo+    bar+    baz++</div>".replace('+', "\n")
         );
@@ -108,7 +159,7 @@ mod tests {
         let content = "    hoge+    +    foo+".replace('+', "\n");
         let removed_pos = [RemovedMarker::Block(13)];
         assert_eq!(
-            format(&content, &removed_pos, &strategy),
+            format(&content, &removed_pos, &strategy, &[]),
             //12345678901234567890123456789012345678901234567
             "    hoge+    foo+".replace('+', "\n")
         );
@@ -125,7 +176,7 @@ mod tests {
         let content = "    hoge++    +    foo+".replace('+', "\n");
         let removed_pos = [RemovedMarker::Block(14)];
         assert_eq!(
-            format(&content, &removed_pos, &strategy),
+            format(&content, &removed_pos, &strategy, &[]),
             //12345678901234567890123456789012345678901234567
             "    hoge++    foo+".replace('+', "\n")
         );
@@ -142,7 +193,7 @@ mod tests {
         let content = "    hoge+    ++    foo+".replace('+', "\n");
         let removed_pos = [RemovedMarker::Block(14)];
         assert_eq!(
-            format(&content, &removed_pos, &strategy),
+            format(&content, &removed_pos, &strategy, &[]),
             //12345678901234567890123456789012345678901234567
             "    hoge++    foo+".replace('+', "\n")
         );
@@ -159,7 +210,7 @@ mod tests {
         let content = "    hoge+ +    + +    foo+".replace('+', "\n");
         let removed_pos = [RemovedMarker::Block(15)];
         assert_eq!(
-            format(&content, &removed_pos, &strategy),
+            format(&content, &removed_pos, &strategy, &[]),
             //12345678901234567890123456789012345678901234567
             "    hoge++    foo+".replace('+', "\n")
         );
@@ -175,7 +226,8 @@ mod tests {
             format(
                 &content,
                 &removed_pos,
-                &[Box::new(prev_line_break_remover::PrevLineBreakRemover {}),]
+                &[Box::new(prev_line_break_remover::PrevLineBreakRemover {}),],
+                &[]
             ),
             //123456789012345678901234567890123456789012345
             "+<div>+    +    ++    +</div>".replace('+', "\n")
@@ -193,9 +245,29 @@ mod tests {
                 &[
                     Box::new(indent_remover::IndentRemover {}),
                     Box::new(prev_line_break_remover::PrevLineBreakRemover {}),
-                ]
+                ],
+                &[]
             ),
             "+<div>+hoge+++baz</div>".replace('+', "\n")
         );
+    }
+
+    #[test]
+    fn test_merge_ranges() {
+        let mut ranges = vec![1..2, 5..6, 10..15];
+        let new_ranges = vec![0..1, 3..4, 9..12];
+        merge_ranges(&mut ranges, new_ranges);
+        assert_eq!(ranges, vec![0..1, 1..2, 3..4, 5..6, 9..12, 10..15]);
+    }
+
+    #[test]
+    fn test_merge_overlapped_ranges() {
+        let mut ranges = vec![1..5, 2..6, 8..10, 9..12, 15..18, 20..24];
+        merge_overlapped_ranges(&mut ranges);
+        assert_eq!(ranges, vec![1..6, 8..12, 15..18, 20..24]);
+
+        let mut ranges = vec![];
+        merge_overlapped_ranges(&mut ranges);
+        assert_eq!(ranges, vec![]);
     }
 }
