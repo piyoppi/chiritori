@@ -18,97 +18,100 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
         NameBegin,
         Name(usize),
         NameEnd,
-        AttrBegin,
-        AttrWithNoQuote,
-        AttrWithDoubleQuote(usize),
-        AttrWithSingleQuote(usize),
+        ValueBegin,
+        ValueWithNoQuote,
+        ValueWithDoubleQuote(usize),
+        ValueWithSingleQuote(usize),
         ParseError,
     }
 
     match &token.kind {
         tokenizer::TokenKind::Element(element) => {
-            let target = token
-                .value
-                .trim_start_matches(element.delimiter_start)
-                .trim_end_matches(element.delimiter_end);
+            let (pairs, last_state) = {
+                let target = token
+                    .value
+                    .trim_start_matches(element.delimiter_start)
+                    .trim_end_matches(element.delimiter_end);
 
-            let values =
-                target
+                let (mut pairs, last_state) = target
                     .char_indices()
-                    .fold((vec![], State::NameBegin), |mut acc, (pos, val)| {
-                        match acc.1 {
-                            State::NameBegin => match val {
+                    .fold((vec![], State::NameBegin), |(mut pairs, mut state), (pos, current_char)| {
+                        match state {
+                            State::NameBegin => match current_char {
                                 ' ' => {}
-                                '=' => acc.1 = State::ParseError,
-                                '"' => acc.1 = State::ParseError,
-                                '\'' => acc.1 = State::ParseError,
+                                '=' => state = State::ParseError,
+                                '"' => state = State::ParseError,
+                                '\'' => state = State::ParseError,
                                 _ => {
-                                    acc.1 = State::Name(pos);
+                                    state = State::Name(pos);
                                 }
                             },
-                            State::Name(start) => match val {
+                            State::Name(start) => match current_char {
                                 ' ' => {
-                                    acc.0.push((&target[start..pos], None));
-                                    acc.1 = State::NameEnd;
+                                    pairs.push((&target[start..pos], None));
+                                    state = State::NameEnd;
                                 }
                                 '=' => {
-                                    acc.0.push((&target[start..pos], None));
-                                    acc.1 = State::AttrBegin
+                                    pairs.push((&target[start..pos], None));
+                                    state = State::ValueBegin
                                 }
                                 _ => {}
                             },
-                            State::NameEnd => match val {
+                            State::NameEnd => match current_char {
                                 ' ' => {}
-                                '=' => acc.1 = State::AttrBegin,
+                                '=' => state = State::ValueBegin,
                                 _ => {
-                                    acc.1 = State::Name(pos);
+                                    state = State::Name(pos);
                                 }
                             },
-                            State::AttrBegin => match val {
+                            State::ValueBegin => match current_char {
                                 ' ' => {}
                                 '"' => {
-                                    acc.1 = State::AttrWithDoubleQuote(pos + 1);
+                                    state = State::ValueWithDoubleQuote(pos + 1);
                                 }
                                 '\'' => {
-                                    acc.1 = State::AttrWithSingleQuote(pos + 1);
+                                    state = State::ValueWithSingleQuote(pos + 1);
                                 }
-                                _ => acc.1 = State::AttrWithNoQuote,
+                                _ => state = State::ValueWithNoQuote,
                             },
-                            State::AttrWithDoubleQuote(start) => if val == '"' {
-                                acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
-                                acc.1 = State::NameBegin
+                            State::ValueWithDoubleQuote(start) => if current_char == '"' {
+                                pairs.last_mut().unwrap().1 = Some(&target[start..pos]);
+                                state = State::NameBegin
                             },
-                            State::AttrWithSingleQuote(start) => if val == '\'' {
-                                acc.0.last_mut().unwrap().1 = Some(&target[start..pos]);
-                                acc.1 = State::NameBegin
+                            State::ValueWithSingleQuote(start) => if current_char == '\'' {
+                                pairs.last_mut().unwrap().1 = Some(&target[start..pos]);
+                                state = State::NameBegin
                             },
-                            State::AttrWithNoQuote => if val == ' ' {
-                                acc.1 = State::NameBegin
+                            State::ValueWithNoQuote => if current_char == ' ' {
+                                state = State::NameBegin
                             },
                             State::ParseError => {}
                         }
 
-                        acc
+                        (pairs, state)
                     });
 
-            if values.1 == State::ParseError {
+                if let State::Name(start) = last_state {
+                    pairs.push((&target[start..], None));
+                }
+
+                (pairs, last_state)
+            };
+
+            if last_state == State::ParseError {
                 return None;
             }
 
-            let (name, attrs) = if let State::Name(start) = values.1 {
-                (&target[start..], vec![])
-            } else {
-                (
-                    values.0[0].0,
-                    values.0[1..]
-                        .iter()
-                        .map(|s| Attribute {
-                            name: s.0,
-                            value: s.1,
-                        })
-                        .collect(),
-                )
-            };
+            let (name, attrs) = (
+                pairs[0].0,
+                pairs[1..]
+                    .iter()
+                    .map(|(name, value)| Attribute {
+                        name,
+                        value: *value
+                    })
+                .collect()
+            );
 
             Some(Element { name, attrs })
         }
@@ -166,6 +169,20 @@ mod tests {
                     Attribute {
                         name: "to",
                         value: Some("123")
+                    }
+                ],
+            })
+        );
+
+        let tokens = tokenizer::tokenize(r#"<foo bar>"#, "<", ">");
+        assert_eq!(
+            parse(&tokens[0]),
+            Some(Element {
+                name: "foo",
+                attrs: vec![
+                    Attribute {
+                        name: "bar",
+                        value: None
                     }
                 ],
             })
