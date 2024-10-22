@@ -2,12 +2,12 @@ use chiritori::{ChiritoriConfiguration, TimeLimitedConfiguration};
 use clap::Parser;
 use std::fs::File;
 use std::io::prelude::*;
+use std::rc::Rc;
 mod element_parser;
-mod formatter;
 mod parser;
-mod remover;
 mod tokenizer;
 mod chiritori;
+mod code;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -45,7 +45,6 @@ fn main() {
     let args = Args::parse();
 
     let mut content = String::new();
-
     if args.filename.is_none() {
         if atty::isnt(atty::Stream::Stdin) {
             std::io::stdin()
@@ -60,6 +59,8 @@ fn main() {
         f.read_to_string(&mut content)
             .expect("something went wrong reading the file");
     }
+
+    let content = Rc::new(content);
 
     let config = ChiritoriConfiguration {
         delimiter_start: args.delimiter_start,

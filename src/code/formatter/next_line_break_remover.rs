@@ -1,4 +1,5 @@
-use super::utils::line_break_pos_finder::find_next_line_break_pos;
+use crate::code::utils::line_break_pos_finder::find_next_line_break_pos;
+
 use super::Formatter;
 pub struct NextLineBreakRemover {}
 
@@ -6,8 +7,8 @@ impl Formatter for NextLineBreakRemover {
     fn format(&self, content: &str, byte_pos: usize, _next_byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 
-        let line_break_pos = find_next_line_break_pos(content, bytes, byte_pos)
-            .and_then(|pos| find_next_line_break_pos(content, bytes, pos + 1));
+        let line_break_pos = find_next_line_break_pos(content, bytes, byte_pos, true)
+            .and_then(|pos| find_next_line_break_pos(content, bytes, pos + 1, true));
 
         if let Some(line_break_pos) = line_break_pos {
             (byte_pos, line_break_pos)
