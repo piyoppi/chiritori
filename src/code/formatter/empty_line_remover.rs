@@ -1,5 +1,5 @@
-use super::utils::line_break_pos_finder::find_next_line_break_pos;
-use super::utils::line_break_pos_finder::find_prev_line_break_pos;
+use crate::code::utils::line_break_pos_finder::{find_next_line_break_pos, find_prev_line_break_pos};
+
 use super::Formatter;
 
 pub struct EmptyLineRemover {}
@@ -16,14 +16,14 @@ impl Formatter for EmptyLineRemover {
             return (byte_pos, byte_pos);
         }
 
-        let is_next_line_empty = find_next_line_break_pos(content, bytes, byte_pos)
-            .and_then(|pos| find_next_line_break_pos(content, bytes, pos + 1))
+        let is_not_next_line_empty = find_next_line_break_pos(content, bytes, byte_pos, true)
+            .and_then(|pos| find_next_line_break_pos(content, bytes, pos + 1, true))
             .is_none();
-        let is_prev_line_empty = find_prev_line_break_pos(content, bytes, byte_pos)
-            .and_then(|pos| find_prev_line_break_pos(content, bytes, pos))
+        let is_not_prev_line_empty = find_prev_line_break_pos(content, bytes, byte_pos, true)
+            .and_then(|pos| find_prev_line_break_pos(content, bytes, pos, true))
             .map_or(true, |pos| pos <= next_byte_pos);
 
-        if is_next_line_empty && is_prev_line_empty {
+        if is_not_next_line_empty && is_not_prev_line_empty {
             (byte_pos, byte_pos + 1)
         } else {
             (byte_pos, byte_pos)

@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
-use crate::{formatter::{self, Formatter}, parser, remover, tokenizer};
+use std::{collections::HashMap, rc::Rc};
+use crate::{code::{formatter::{self, Formatter, BlockFormatter}, remover::{self, marker::{availability::{range_marker_availability::RangeMarkerAvailability, unwrap_block_marker_availability::UnwrapBlockMarkerAvailability}, builder::{range_marker_builder::RangeMarkerBuilder, unwrap_block_marker_builder::UnwrapBlockMarkerBuilder}, factory::RemoveStrategies}}}, parser, tokenizer};
 
 pub struct ChiritoriConfiguration {
     pub delimiter_start: String,
@@ -34,19 +33,7 @@ impl Default for TimeLimitedConfiguration {
     }
 }
 
-pub fn clean(content: String, config: ChiritoriConfiguration) -> String {
-    let mut builder_map: HashMap<
-        &str,
-        Box<dyn remover::remove_marker_builder::RemoveMarkerBuilder>,
-    > = HashMap::new();
-    builder_map.insert(
-        &config.time_limited_configuration.tag_name,
-        Box::new(remover::time_limited_remover::TimeLimitedRemover {
-            current_time: config.time_limited_configuration.current,
-            time_offset: config.time_limited_configuration.time_offset,
-        }),
-    );
-
+pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
     let tokens = tokenizer::tokenize(
         &content,
         &config.delimiter_start,
@@ -54,8 +41,32 @@ pub fn clean(content: String, config: ChiritoriConfiguration) -> String {
     );
 
     let parsed = parser::parse(&tokens);
+    let mut builder_map: HashMap<
+        &str,
+        Box<dyn remover::removal_evaluator::RemovalEvaluator>,
+    > = HashMap::new();
+    builder_map.insert(
+        &config.time_limited_configuration.tag_name,
+        Box::new(remover::time_limited_evaluator::TimeLimitedEvaluator {
+            current_time: config.time_limited_configuration.current,
+            time_offset: config.time_limited_configuration.time_offset,
+        }),
+    );
 
-    let (removed, markers) = remover::remove(parsed, &content, &builder_map);
+    let remove_strategy_map: RemoveStrategies = vec![
+        (
+            Box::new(UnwrapBlockMarkerAvailability::new("unwrap-block")),
+            Box::new(UnwrapBlockMarkerBuilder {
+                content: Rc::clone(&content)
+            })
+        ),
+        (
+            Box::new(RangeMarkerAvailability::default()),
+            Box::new(RangeMarkerBuilder::default())
+        ),
+    ];
+
+    let (removed, markers) = remover::remove(parsed, &content, &builder_map, &remove_strategy_map);
 
     let removed_pos = remover::get_removed_pos(&markers);
     let formatter: Vec<Box<dyn Formatter>> = vec![
@@ -64,8 +75,11 @@ pub fn clean(content: String, config: ChiritoriConfiguration) -> String {
         Box::new(formatter::prev_line_break_remover::PrevLineBreakRemover {}),
         Box::new(formatter::next_line_break_remover::NextLineBreakRemover {}),
     ];
+    let structure_formatters: Vec<Box<dyn BlockFormatter>> = vec! [
+        Box::new(formatter::block_indent_remover::BlockIndentRemover {})
+    ];
 
-    formatter::format(&removed, &removed_pos, &formatter)
+    formatter::format(&removed, &removed_pos, &formatter, &structure_formatters)
 }
 
 #[cfg(test)]
@@ -73,10 +87,10 @@ mod tests {
     use super::*;
     use chrono::Local;
 
-    fn create_test_config() -> ChiritoriConfiguration {
+    fn create_test_config(delimiter_start: &str, delimiter_end: &str) -> ChiritoriConfiguration {
         ChiritoriConfiguration {
-            delimiter_start: String::from("<!--"),
-            delimiter_end: String::from("-->"),
+            delimiter_start: String::from(delimiter_start),
+            delimiter_end: String::from(delimiter_end),
             time_limited_configuration: TimeLimitedConfiguration {
                 tag_name: String::from("time-limited"),
                 current: Local::now(),
@@ -124,8 +138,43 @@ mod tests {
   </body>
 </html>"#);
 
-        let config = create_test_config();
-        let result = clean(content, config);
+        let config = create_test_config("<!--", "-->");
+        let result = clean(content.into(), config);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_clean_removes_time_limited_code_with_open_structure() {
+        let content = String::from(r#"
+isReleased = async fetchFeature("https://example.test/features/awesome-feature")
+
+/* <time-limited to="2021-01-01 00:00:00" unwrap-block> */
+if (isReleased) {
+  console.log("Released!")
+
+  /* <time-limited to="2021-01-01 00:00:00"> */
+  console.log("Temporary code until 2021/01/01")
+  /* </time-limited> */
+
+  /* <time-limited to="9999-01-01 00:00:00"> */
+  console.log("Temporary code until 9999/01/01")
+  /* </time-limited> */
+}
+/* </time-limited> */
+"#);
+        let expected = String::from(r#"
+isReleased = async fetchFeature("https://example.test/features/awesome-feature")
+
+console.log("Released!")
+
+/* <time-limited to="9999-01-01 00:00:00"> */
+console.log("Temporary code until 9999/01/01")
+/* </time-limited> */
+"#);
+
+        let config = create_test_config("/* <", "> */");
+        let result = clean(content.into(), config);
 
         assert_eq!(result, expected);
     }
