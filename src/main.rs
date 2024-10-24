@@ -3,11 +3,11 @@ use clap::Parser;
 use std::fs::File;
 use std::io::prelude::*;
 use std::rc::Rc;
+mod chiritori;
+mod code;
 mod element_parser;
 mod parser;
 mod tokenizer;
-mod chiritori;
-mod code;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -72,8 +72,7 @@ fn main() {
                 .time_limited_current
                 .parse::<chrono::DateTime<chrono::Local>>()
                 .unwrap_or(chrono::Local::now()),
-
-        }
+        },
     };
 
     let cleaned = chiritori::clean(content, config);

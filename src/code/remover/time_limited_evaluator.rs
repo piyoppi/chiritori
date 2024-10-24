@@ -56,9 +56,7 @@ mod tests {
             .into(),
             time_offset: "+0000".to_string(),
         };
-        assert!(
-            evaluator.is_removal(&start_el)
-        );
+        assert!(evaluator.is_removal(&start_el));
     }
 
     #[test]
@@ -79,8 +77,6 @@ mod tests {
             .into(),
             time_offset: "+0000".to_string(),
         };
-        assert!(
-            !evaluator.is_removal(&start_el)
-        );
+        assert!(!evaluator.is_removal(&start_el));
     }
 }

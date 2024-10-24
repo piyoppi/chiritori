@@ -1,18 +1,23 @@
-use std::ops::Range;
 use super::remover::RemovedMarker;
+use std::ops::Range;
 
+pub mod block_indent_remover;
 pub mod empty_line_remover;
 pub mod indent_remover;
 pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
-pub mod block_indent_remover;
 
 pub trait Formatter {
     fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize);
 }
 
 pub trait BlockFormatter {
-    fn format(&self, content: &str, start_byte_pos: usize, end_byte_pos: usize) -> Vec<Range<usize>>;
+    fn format(
+        &self,
+        content: &str,
+        start_byte_pos: usize,
+        end_byte_pos: usize,
+    ) -> Vec<Range<usize>>;
 }
 
 pub fn format(
@@ -46,14 +51,22 @@ pub fn format(
     merge_ranges(&mut ranges, open_structure_remove_range);
     merge_overlapped_ranges(&mut ranges);
 
-    ranges.into_iter().rev().fold(content.to_string(), |mut content, range| {
-        content.replace_range(range, "");
+    ranges
+        .into_iter()
+        .rev()
+        .fold(content.to_string(), |mut content, range| {
+            content.replace_range(range, "");
 
-        content
-    })
+            content
+        })
 }
 
-fn format_block(content: &str, pos: usize, prev_pos: usize, formatters: &[Box<dyn Formatter>]) -> Range<usize> {
+fn format_block(
+    content: &str,
+    pos: usize,
+    prev_pos: usize,
+    formatters: &[Box<dyn Formatter>],
+) -> Range<usize> {
     formatters.iter().fold(pos..pos, |range, f| {
         let (start, end) = f.format(content, pos, prev_pos);
         let start = std::cmp::max(start.min(range.start), prev_pos);
@@ -78,25 +91,24 @@ fn merge_ranges(ranges: &mut Vec<Range<usize>>, new_ranges: Vec<Range<usize>>) {
             Some(new_range) => {
                 cursor = match cursor {
                     Some(mut cursor) => loop {
-                                            let range = &ranges[cursor];
-                                            if range.start < new_range.start {
-                                                break Some(cursor);
-                                            }
-                                            if cursor == 0 {
-                                                break None;
-                                            }
-                                            cursor -= 1;
-                                        },
-                    None => None
+                        let range = &ranges[cursor];
+                        if range.start < new_range.start {
+                            break Some(cursor);
+                        }
+                        if cursor == 0 {
+                            break None;
+                        }
+                        cursor -= 1;
+                    },
+                    None => None,
                 };
 
                 match cursor {
                     Some(cursor) => ranges.insert(cursor + 1, new_range),
-                    None => ranges.insert(0, new_range)
+                    None => ranges.insert(0, new_range),
                 }
-
-            },
-            None => break
+            }
+            None => break,
         }
     }
 }

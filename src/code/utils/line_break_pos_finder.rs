@@ -1,4 +1,9 @@
-pub fn find_next_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize, pause_on_char: bool) -> Option<usize> {
+pub fn find_next_line_break_pos(
+    content: &str,
+    bytes: &[u8],
+    byte_pos: usize,
+    pause_on_char: bool,
+) -> Option<usize> {
     let mut cursor = byte_pos;
 
     loop {
@@ -11,16 +16,21 @@ pub fn find_next_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize, pa
             CheckResult::Found => break Some(cursor),
             CheckResult::None => {
                 if pause_on_char {
-                    break None
+                    break None;
                 }
-            },
+            }
         }
 
         cursor += 1;
     }
 }
 
-pub fn find_prev_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize, pause_on_char: bool) -> Option<usize> {
+pub fn find_prev_line_break_pos(
+    content: &str,
+    bytes: &[u8],
+    byte_pos: usize,
+    pause_on_char: bool,
+) -> Option<usize> {
     let mut cursor = byte_pos;
 
     if cursor == 0 {
@@ -39,9 +49,9 @@ pub fn find_prev_line_break_pos(content: &str, bytes: &[u8], byte_pos: usize, pa
             CheckResult::Found => break Some(cursor),
             CheckResult::None => {
                 if pause_on_char {
-                    break None
+                    break None;
                 }
-            },
+            }
         }
     }
 }

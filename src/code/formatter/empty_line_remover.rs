@@ -1,4 +1,6 @@
-use crate::code::utils::line_break_pos_finder::{find_next_line_break_pos, find_prev_line_break_pos};
+use crate::code::utils::line_break_pos_finder::{
+    find_next_line_break_pos, find_prev_line_break_pos,
+};
 
 use super::Formatter;
 

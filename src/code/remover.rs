@@ -1,11 +1,11 @@
+pub mod marker;
 pub mod removal_evaluator;
 pub mod time_limited_evaluator;
-pub mod marker;
 
-use marker::factory::{create, RemoveStrategies};
-use removal_evaluator::RemovalEvaluator;
 use crate::parser;
 use crate::parser::ContentPart;
+use marker::factory::{create, RemoveStrategies};
+use removal_evaluator::RemovalEvaluator;
 use std::collections::HashMap;
 use std::ops::Range;
 
@@ -16,7 +16,7 @@ pub fn remove(
     content: Vec<ContentPart>,
     raw: &str,
     builder_map: &HashMap<&str, Box<dyn RemovalEvaluator>>,
-    remove_strategy_map: &RemoveStrategies
+    remove_strategy_map: &RemoveStrategies,
 ) -> (String, Vec<RemoveMarker>) {
     let markers = build_remove_marker(&content, builder_map, remove_strategy_map);
     let mut new_content = raw.to_string();
@@ -31,37 +31,40 @@ pub fn remove(
 pub fn get_removed_pos(markers: &[RemoveMarker]) -> Vec<RemovedMarker> {
     markers
         .iter()
-        .fold((vec![], 0), |(mut positions, mut removed_len), (marker, pair_pos)| {
-            positions.push((marker.start - removed_len, *pair_pos));
-            removed_len += marker.end - marker.start;
-            (positions, removed_len)
-        })
+        .fold(
+            (vec![], 0),
+            |(mut positions, mut removed_len), (marker, pair_pos)| {
+                positions.push((marker.start - removed_len, *pair_pos));
+                removed_len += marker.end - marker.start;
+                (positions, removed_len)
+            },
+        )
         .0
 }
 
 fn build_remove_marker(
     contents: &[ContentPart],
     evaluator_map: &HashMap<&str, Box<dyn RemovalEvaluator>>,
-    remove_strategy_map: &RemoveStrategies
+    remove_strategy_map: &RemoveStrategies,
 ) -> Vec<RemoveMarker> {
     contents.iter().fold(vec![], |mut acc, c| {
         if let parser::ContentPart::Element(el) = c {
             let evaluator = evaluator_map.get(el.start_element.name);
-            let marker = evaluator
-                .and_then(|evaluator| {
-                    match evaluator.is_removal(&el.start_element) {
-                        true => create(el, remove_strategy_map),
-                        false => None
-                    }
+            let marker =
+                evaluator.and_then(|evaluator| match evaluator.is_removal(&el.start_element) {
+                    true => create(el, remove_strategy_map),
+                    false => None,
                 });
 
-            let child_markers = build_remove_marker(&el.children, evaluator_map, remove_strategy_map);
+            let child_markers =
+                build_remove_marker(&el.children, evaluator_map, remove_strategy_map);
 
             if let Some((mut marker, pair)) = marker {
                 let mut start_cursor = 0;
                 for (child_marker, _) in &child_markers {
                     if marker.contains(&child_marker.start) || marker.contains(&child_marker.end) {
-                        marker = marker.start.min(child_marker.start)..marker.end.max(child_marker.end)
+                        marker =
+                            marker.start.min(child_marker.start)..marker.end.max(child_marker.end)
                     } else {
                         break;
                     }
@@ -71,8 +74,11 @@ fn build_remove_marker(
                 if let Some(mut end_marker) = pair {
                     let mut end_cursor = child_markers.len();
                     for (child_marker, _) in child_markers.iter().rev() {
-                        if end_marker.contains(&child_marker.start) || end_marker.contains(&child_marker.end) {
-                            end_marker = end_marker.start.min(child_marker.start)..end_marker.end.max(child_marker.end)
+                        if end_marker.contains(&child_marker.start)
+                            || end_marker.contains(&child_marker.end)
+                        {
+                            end_marker = end_marker.start.min(child_marker.start)
+                                ..end_marker.end.max(child_marker.end)
                         } else {
                             break;
                         }
@@ -80,7 +86,10 @@ fn build_remove_marker(
                     }
 
                     let current = acc.len();
-                    acc.push((marker, Some(current + (end_cursor - start_cursor).max(0) + 1)));
+                    acc.push((
+                        marker,
+                        Some(current + (end_cursor - start_cursor).max(0) + 1),
+                    ));
                     if start_cursor < end_cursor {
                         acc.extend(child_markers[start_cursor..end_cursor].to_owned());
                     }
@@ -101,7 +110,16 @@ fn build_remove_marker(
 mod tests {
     use std::rc::Rc;
 
-    use marker::{availability::{range_marker_availability::RangeMarkerAvailability, unwrap_block_marker_availability::UnwrapBlockMarkerAvailability}, builder::{range_marker_builder::RangeMarkerBuilder, unwrap_block_marker_builder::UnwrapBlockMarkerBuilder}};
+    use marker::{
+        availability::{
+            range_marker_availability::RangeMarkerAvailability,
+            unwrap_block_marker_availability::UnwrapBlockMarkerAvailability,
+        },
+        builder::{
+            range_marker_builder::RangeMarkerBuilder,
+            unwrap_block_marker_builder::UnwrapBlockMarkerBuilder,
+        },
+    };
     use time_limited_evaluator::TimeLimitedEvaluator;
 
     use super::*;
@@ -111,14 +129,12 @@ mod tests {
         vec![
             (
                 Box::new(UnwrapBlockMarkerAvailability::new("unwrap-block")),
-                Box::new(UnwrapBlockMarkerBuilder {
-                    content
-                })
+                Box::new(UnwrapBlockMarkerBuilder { content }),
             ),
             (
                 Box::new(RangeMarkerAvailability::default()),
-                Box::new(RangeMarkerBuilder::default())
-            )
+                Box::new(RangeMarkerBuilder::default()),
+            ),
         ]
     }
 
@@ -138,7 +154,11 @@ mod tests {
         let tokens = tokenizer::tokenize(&content, "<", ">");
         let contents = parser::parse(&tokens);
         assert_eq!(
-            build_remove_marker(&contents, &builder_map, &initialize_remove_strategy(Rc::clone(&content))),
+            build_remove_marker(
+                &contents,
+                &builder_map,
+                &initialize_remove_strategy(Rc::clone(&content))
+            ),
             vec![(3..40, None)]
         );
 
@@ -146,7 +166,11 @@ mod tests {
         let tokens = tokenizer::tokenize(&content, "<", ">");
         let contents = parser::parse(&tokens);
         assert_eq!(
-            build_remove_marker(&contents, &builder_map, &initialize_remove_strategy(Rc::clone(&content))),
+            build_remove_marker(
+                &contents,
+                &builder_map,
+                &initialize_remove_strategy(Rc::clone(&content))
+            ),
             vec![]
         );
     }
@@ -169,7 +193,8 @@ mod tests {
             }),
         );
 
-        let content = Rc::new("
+        let content = Rc::new(
+            "
 <div>
     hoge
     <!-- time-limited to='2021-12-31 23:50:00' -->
@@ -182,23 +207,23 @@ mod tests {
     <h1>Campaign 2</h1>
     <!-- /time-limited -->
 </div>
-".to_string());
+"
+            .to_string(),
+        );
         let (removed, markers) = remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
             &content,
             &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content))
+            &initialize_remove_strategy(Rc::clone(&content)),
         );
-        assert_eq!(removed, "+<div>+    hoge+    +    foo+    bar+    baz+    +</div>+".replace('+', "\n"));
         assert_eq!(
-            markers,
-            vec![
-                (20..117, None),
-                (146..243, None)
-            ]
+            removed,
+            "+<div>+    hoge+    +    foo+    bar+    baz+    +</div>+".replace('+', "\n")
         );
+        assert_eq!(markers, vec![(20..117, None), (146..243, None)]);
 
-        let content = Rc::new("
+        let content = Rc::new(
+            "
 hoge
 <!-- time-limited to='2021-12-31 23:50:00' -->
 <h1>Campaign 1</h1>
@@ -207,31 +232,30 @@ foo
 <!-- time-limited to='2022-12-31 23:50:00' -->
 <h1>Campaign 2</h1>
 <!-- /time-limited -->
-".to_string());
+"
+            .to_string(),
+        );
 
         let (removed, markers) = remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
             &content,
             &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content))
+            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(
-            removed, 
-                "
+            removed,
+            "
 hoge
 
 foo
 
-".to_string());
-        assert_eq!(
-            markers,
-            vec![
-                (6..95, None),
-                (100..189, None),
-            ]
+"
+            .to_string()
         );
+        assert_eq!(markers, vec![(6..95, None), (100..189, None),]);
 
-        let content = Rc::new("
+        let content = Rc::new(
+            "
 // --- start ---
 /* time-limited to='2021-12-31 23:50:00' unwrap-block */
 if (foo) {
@@ -240,31 +264,29 @@ if (foo) {
 }
 /* /time-limited */
 // ---  end  ---
-".to_string());
+"
+            .to_string(),
+        );
 
         let (removed, markers) = remove(
             parser::parse(&tokenizer::tokenize(&content, "/*", "*/")),
             &content,
             &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content))
+            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(
             removed,
-                "
+            "
 // --- start ---
 
     console.log('abc');
     console.log('def');
 
 // ---  end  ---
-".to_string());
-        assert_eq!(
-            markers, 
-            vec![
-                (18..85, Some(1)),
-                (134..155, Some(0))
-            ]
+"
+            .to_string()
         );
+        assert_eq!(markers, vec![(18..85, Some(1)), (134..155, Some(0))]);
 
         // byte_pos:           0        10        20        30        40        50        60        70        80        90       100       110       120       130       140
         //                     0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
@@ -274,11 +296,11 @@ if (foo) {
             parser::parse(&tokenizer::tokenize(&content, "<", ">")),
             &content,
             &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content))
+            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(removed, "foo+++  s1+  s2++".to_string().replace("+", "\n"));
         assert_eq!(
-            markers, 
+            markers,
             vec![
                 (4..43, None),
                 (44..88, Some(2)),
@@ -295,9 +317,12 @@ if (foo) {
             parser::parse(&tokenizer::tokenize(&content, "<", ">")),
             &content,
             &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content))
+            &initialize_remove_strategy(Rc::clone(&content)),
         );
-        assert_eq!(removed, "foo+++  s1+  +  s2+".to_string().replace("+", "\n"));
+        assert_eq!(
+            removed,
+            "foo+++  s1+  +  s2+".to_string().replace("+", "\n")
+        );
         assert_eq!(
             markers,
             vec![
@@ -321,11 +346,10 @@ if (foo) {
         // removed          : Q|R T|U I|P @
         // result_cursor_pos:  ^   ^   ^
         //                     1   3   5
-        let markers = vec![
-            (1..3, None),
-            (5..6, None),
-            (8..9, None),
-        ];
-        assert_eq!(get_removed_pos(&markers), vec![(1, None), (3, None), (5, None)]);
+        let markers = vec![(1..3, None), (5..6, None), (8..9, None)];
+        assert_eq!(
+            get_removed_pos(&markers),
+            vec![(1, None), (3, None), (5, None)]
+        );
     }
 }

@@ -33,9 +33,9 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
                     .trim_start_matches(element.delimiter_start)
                     .trim_end_matches(element.delimiter_end);
 
-                let (mut pairs, last_state) = target
-                    .char_indices()
-                    .fold((vec![], State::NameBegin), |(mut pairs, mut state), (pos, current_char)| {
+                let (mut pairs, last_state) = target.char_indices().fold(
+                    (vec![], State::NameBegin),
+                    |(mut pairs, mut state), (pos, current_char)| {
                         match state {
                             State::NameBegin => match current_char {
                                 ' ' => {}
@@ -74,22 +74,29 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
                                 }
                                 _ => state = State::ValueWithNoQuote,
                             },
-                            State::ValueWithDoubleQuote(start) => if current_char == '"' {
-                                pairs.last_mut().unwrap().1 = Some(&target[start..pos]);
-                                state = State::NameBegin
-                            },
-                            State::ValueWithSingleQuote(start) => if current_char == '\'' {
-                                pairs.last_mut().unwrap().1 = Some(&target[start..pos]);
-                                state = State::NameBegin
-                            },
-                            State::ValueWithNoQuote => if current_char == ' ' {
-                                state = State::NameBegin
-                            },
+                            State::ValueWithDoubleQuote(start) => {
+                                if current_char == '"' {
+                                    pairs.last_mut().unwrap().1 = Some(&target[start..pos]);
+                                    state = State::NameBegin
+                                }
+                            }
+                            State::ValueWithSingleQuote(start) => {
+                                if current_char == '\'' {
+                                    pairs.last_mut().unwrap().1 = Some(&target[start..pos]);
+                                    state = State::NameBegin
+                                }
+                            }
+                            State::ValueWithNoQuote => {
+                                if current_char == ' ' {
+                                    state = State::NameBegin
+                                }
+                            }
                             State::ParseError => {}
                         }
 
                         (pairs, state)
-                    });
+                    },
+                );
 
                 if let State::Name(start) = last_state {
                     pairs.push((&target[start..], None));
@@ -108,9 +115,9 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
                     .iter()
                     .map(|(name, value)| Attribute {
                         name,
-                        value: *value
+                        value: *value,
                     })
-                .collect()
+                    .collect(),
             );
 
             Some(Element { name, attrs })
@@ -179,12 +186,10 @@ mod tests {
             parse(&tokens[0]),
             Some(Element {
                 name: "foo",
-                attrs: vec![
-                    Attribute {
-                        name: "bar",
-                        value: None
-                    }
-                ],
+                attrs: vec![Attribute {
+                    name: "bar",
+                    value: None
+                }],
             })
         );
 

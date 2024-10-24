@@ -9,7 +9,7 @@ pub fn find_next_char_pos(content: &str, bytes: &[u8], byte_pos: usize) -> Optio
         match check(content, bytes, &cursor) {
             CheckResult::Skip => {}
             CheckResult::Found => break Some(cursor),
-            CheckResult::None => break None
+            CheckResult::None => break None,
         }
 
         cursor += 1;
@@ -42,7 +42,7 @@ mod tests {
     #[test]
     fn test_find_next_line_break_pos() {
         //             012345678901234567890123456789
-        //             |      ^  ^   
+        //             |      ^  ^
         let content = "   hoge   fuga   piyo".replace('+', "\n");
         assert_eq!(
             find_next_char_pos(&content, content.as_bytes(), 7),

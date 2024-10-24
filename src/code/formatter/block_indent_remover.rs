@@ -1,23 +1,32 @@
-use crate::code::utils::{char_pos_finder::find_next_char_pos, line_break_pos_finder::{find_next_line_break_pos, find_prev_line_break_pos}};
 use super::BlockFormatter;
+use crate::code::utils::{
+    char_pos_finder::find_next_char_pos,
+    line_break_pos_finder::{find_next_line_break_pos, find_prev_line_break_pos},
+};
 use std::ops::Range;
 
 pub struct BlockIndentRemover {}
 
 impl BlockFormatter for BlockIndentRemover {
-    fn format(&self, content: &str, start_byte_pos: usize, end_byte_pos: usize) -> Vec<Range<usize>> {
+    fn format(
+        &self,
+        content: &str,
+        start_byte_pos: usize,
+        end_byte_pos: usize,
+    ) -> Vec<Range<usize>> {
         let bytes = content.as_bytes();
 
         let indent_ofs = match find_prev_line_break_pos(content, bytes, start_byte_pos, true) {
             Some(pos) => start_byte_pos - pos - 1,
-            None => 0
+            None => 0,
         };
         let mut current_pos = start_byte_pos + 1;
         let indent_len = get_indent_len(content, current_pos) - indent_ofs;
 
         let mut positions = vec![];
         while end_byte_pos > current_pos {
-            let next_pos = find_next_line_break_pos(content, bytes, current_pos, false).map(|v| v + 1);
+            let next_pos =
+                find_next_line_break_pos(content, bytes, current_pos, false).map(|v| v + 1);
             match next_pos {
                 Some(pos) => {
                     if pos > end_byte_pos {
@@ -35,8 +44,8 @@ impl BlockFormatter for BlockIndentRemover {
                     }
 
                     current_pos = pos;
-                },
-                None => break
+                }
+                None => break,
             }
         }
 
@@ -97,7 +106,6 @@ mod tests {
         let content = "foo++  fuga++  piyo++bar".replace('+', "\n");
         assert_eq!(remover.format(&content, 4, 20), vec![5..7, 13..15]);
 
-
         //    original          removed          formatted
         // +------------+    +------------+    +------------+
         // | ...foo+    |    | ...foo+    |    | ...foo+    |
@@ -118,6 +126,9 @@ mod tests {
         //             012345678901234567890123456789012345678901234567890123456
         //             |      ...^...<>     .. ... ...< ...<>    <>     ...^
         let content = "   foo+   +     fuga+  +   +    +     +     piyo+   +bar".replace('+', "\n");
-        assert_eq!(remover.format(&content, 10, 52), vec![14..16, 31..32, 36..38, 42..44]);
+        assert_eq!(
+            remover.format(&content, 10, 52),
+            vec![14..16, 31..32, 36..38, 42..44]
+        );
     }
 }
