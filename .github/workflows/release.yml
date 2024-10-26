@@ -1,4 +1,4 @@
-name: Attach Release Asset
+name: Release
 
 on:
   push:
@@ -7,75 +7,94 @@ on:
     tags:
       - 'v*.*.*'
 jobs:
-  build-on-ubuntu:
-    name: Build on Ubuntu
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        target:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: windows-x86_64
 
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            name: windows-arm64
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            name: linux-x86_64-musl
+
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            name: linux-arm64-musl
+
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: darwin-x86_64
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: darwin-arm64
+
+    name: Build ${{ matrix.target.name }}
+    runs-on: ${{ matrix.target.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build
-        run: cargo build --release
-
-      - name: Build (x86_64-unknown-linux-musl)
-        run: |
-          rustup target add x86_64-unknown-linux-musl
-          cargo build --release --target x86_64-unknown-linux-musl
-
-      - name: compress
-        run: |
-          tar -czf target/release/ubuntu-latest.tar.gz target/release/chiritori
-          tar -czf target/x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz target/x86_64-unknown-linux-musl/release/chiritori
-
-      - name: Upload Release Asset
-        uses: actions/upload-artifact@v4
+      - name: Install cross-compilation tools
+        uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          name: ubuntu-latest-binary
-          path: |
-            target/release/ubuntu-latest.tar.gz
-            target/x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz
-
-  build-on-macos:
-    name: Build on macOS
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+          target: ${{ matrix.target.target }}
 
       - name: Build
-        run: cargo build --release
+        run: |
+          rustup target add ${{ matrix.target.target }}
+          cargo build --release --target ${{ matrix.target.target }}
 
       - name: compress
+        if: matrix.target.os != 'windows-latest'
         run: |
-          tar -czf target/release/macos-latest.tar.gz target/release/chiritori
+          mv target/${{ matrix.target.target }}/release/chiritori .
+          tar -czf chiritori-${{ matrix.target.name }}.tar.gz ./chiritori
+
+      - name: compress
+        if: matrix.target.os == 'windows-latest'
+        run: |
+          mv target/${{ matrix.target.target }}/release/chiritori.exe .
+          7z a chiritori-${{ matrix.target.name }}.zip ./chiritori.exe
+
 
       - name: Upload Release Asset
+        if: matrix.target.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: macos-latest-binary
+          name: chiritori-${{ matrix.target.name }}
+          if-no-files-found: error
           path: |
-            target/release/macos-latest.tar.gz
+            chiritori-${{ matrix.target.name }}.tar.gz
+
+      - name: Upload Release Asset
+        if: matrix.target.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chiritori-${{ matrix.target.name }}
+          if-no-files-found: error
+          path: |
+            chiritori-${{ matrix.target.name }}.zip
+
 
   release:
     needs:
-      - build-on-ubuntu
-      - build-on-macos
+      - build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download Artifacts (ubuntu-latest-binary)
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ubuntu-latest-binary
-
-      - name: Download Artifacts (macos-latest-binary)
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-latest-binary
+          merge-multiple: true
 
       - name: Create Release (nightly)
         uses: softprops/action-gh-release@v1
@@ -83,17 +102,11 @@ jobs:
           tag_name: nightly
           draft: true
           prerelease: true
-          files: |
-            release/ubuntu-latest.tar.gz
-            x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz
-            macos-latest.tar.gz
+          files: chiritori-*
 
       - name: Create Release(Release)
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           tag_name: ${{ github.ref }}
-          files: |
-            release/ubuntu-latest.tar.gz
-            x86_64-unknown-linux-musl/release/x86_64-unknown-linux-musl.tar.gz
-            macos-latest.tar.gz
+          files: chiritori-*
