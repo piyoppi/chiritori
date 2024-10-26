@@ -1,4 +1,4 @@
-use super::removal_evaluator::RemovalEvaluator;
+use super::RemovalEvaluator;
 use crate::element_parser::Element;
 use chrono::{DateTime, Local};
 

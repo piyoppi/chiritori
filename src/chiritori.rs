@@ -50,17 +50,21 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
 
     builder_map.insert(
         &config.time_limited_configuration.tag_name,
-        Box::new(remover::time_limited_evaluator::TimeLimitedEvaluator {
-            current_time: config.time_limited_configuration.current,
-            time_offset: config.time_limited_configuration.time_offset,
-        }),
+        Box::new(
+            remover::removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator {
+                current_time: config.time_limited_configuration.current,
+                time_offset: config.time_limited_configuration.time_offset,
+            },
+        ),
     );
 
     builder_map.insert(
         &config.marker_tag_configuration.tag_name,
-        Box::new(remover::marker_evaluator::MarkerEvaluator {
-            marker_removal_names: config.marker_tag_configuration.marker_removal_tags,
-        }),
+        Box::new(
+            remover::removal_evaluator::marker_evaluator::MarkerEvaluator {
+                marker_removal_names: config.marker_tag_configuration.marker_removal_tags,
+            },
+        ),
     );
 
     let remove_strategy_map: RemoveStrategies = vec![

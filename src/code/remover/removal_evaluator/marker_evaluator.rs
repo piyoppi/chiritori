@@ -1,7 +1,6 @@
-use std::collections::HashSet;
-
-use super::removal_evaluator::RemovalEvaluator;
+use super::RemovalEvaluator;
 use crate::element_parser::Element;
+use std::collections::HashSet;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct MarkerEvaluator {
