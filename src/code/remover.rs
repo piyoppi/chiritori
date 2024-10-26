@@ -1,6 +1,7 @@
 pub mod marker;
 pub mod removal_evaluator;
 
+use crate::element_parser::Element;
 use crate::parser;
 use crate::parser::ContentPart;
 use marker::factory::{create, RemoveStrategies};
@@ -48,12 +49,16 @@ fn build_remove_marker(
 ) -> Vec<RemoveMarker> {
     contents.iter().fold(vec![], |mut acc, c| {
         if let parser::ContentPart::Element(el) = c {
-            let evaluator = evaluator_map.get(el.start_element.name);
-            let marker =
-                evaluator.and_then(|evaluator| match evaluator.is_removal(&el.start_element) {
-                    true => create(el, remove_strategy_map),
-                    false => None,
-                });
+            let marker = if is_skip(&el.start_element) {
+                None
+            } else {
+                evaluator_map
+                    .get(el.start_element.name)
+                    .and_then(|evaluator| match evaluator.is_removal(&el.start_element) {
+                        true => create(el, remove_strategy_map),
+                        false => None,
+                    })
+            };
 
             let child_markers =
                 build_remove_marker(&el.children, evaluator_map, remove_strategy_map);
@@ -103,6 +108,10 @@ fn build_remove_marker(
 
         acc
     })
+}
+
+fn is_skip(el: &Element) -> bool {
+    el.attrs.iter().any(|v| v.name == "skip")
 }
 
 #[cfg(test)]
@@ -252,6 +261,23 @@ foo
             .to_string()
         );
         assert_eq!(markers, vec![(6..95, None), (100..189, None),]);
+
+        let content = Rc::new(
+            "
+<!-- time-limited skip to='2021-12-31 23:50:00' -->
+<h1>Campaign 1</h1>
+<!-- /time-limited -->
+"
+            .to_string(),
+        );
+
+        let (removed, _) = remove(
+            parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
+            &content,
+            &builder_map,
+            &initialize_remove_strategy(Rc::clone(&content)),
+        );
+        assert_eq!(removed, *content);
 
         let content = Rc::new(
             "
