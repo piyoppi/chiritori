@@ -1,4 +1,5 @@
 pub mod marker;
+pub mod marker_evaluator;
 pub mod removal_evaluator;
 pub mod time_limited_evaluator;
 
