@@ -1,5 +1,6 @@
-use chiritori::{ChiritoriConfiguration, TimeLimitedConfiguration};
+use chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfiguration};
 use clap::Parser;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::*;
 use std::rc::Rc;
@@ -20,6 +21,14 @@ struct Args {
     #[arg(short, long)]
     output: Option<String>,
 
+    /// The delimiter start
+    #[arg(long, default_value = "<!--")]
+    delimiter_start: String,
+
+    /// The delimiter end
+    #[arg(long, default_value = "-->")]
+    delimiter_end: String,
+
     /// The tag name for time-limited content
     #[arg(long, default_value = "time-limited")]
     time_limited_tag_name: String,
@@ -32,13 +41,12 @@ struct Args {
     #[arg(long, default_value = "")]
     time_limited_current: String,
 
-    /// The delimiter start
-    #[arg(long, default_value = "<!--")]
-    delimiter_start: String,
+    /// The tag name for marker
+    #[arg(long, default_value = "marker")]
+    marker_tag_name: String,
 
-    /// The delimiter end
-    #[arg(long, default_value = "-->")]
-    delimiter_end: String,
+    #[arg(long, default_value = "vec![]")]
+    marker_removal_names: Vec<String>,
 }
 
 fn main() {
@@ -61,6 +69,7 @@ fn main() {
     }
 
     let content = Rc::new(content);
+    let marker_removal_tags = HashSet::from_iter(args.marker_removal_names);
 
     let config = ChiritoriConfiguration {
         delimiter_start: args.delimiter_start,
@@ -72,6 +81,10 @@ fn main() {
                 .time_limited_current
                 .parse::<chrono::DateTime<chrono::Local>>()
                 .unwrap_or(chrono::Local::now()),
+        },
+        marker_tag_configuration: MarkerTagConfiguration {
+            tag_name: args.marker_tag_name,
+            marker_removal_tags,
         },
     };
 

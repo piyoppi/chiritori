@@ -1,4 +1,4 @@
-use super::removal_evaluator::RemovalEvaluator;
+use super::RemovalEvaluator;
 use crate::element_parser::Element;
 use chrono::{DateTime, Local};
 
@@ -16,8 +16,8 @@ impl RemovalEvaluator for TimeLimitedEvaluator {
             return false;
         }
 
-        let mut expires_str = expires_attr.unwrap().value.clone().unwrap().to_string();
-        expires_str.push_str(" ");
+        let mut expires_str = expires_attr.unwrap().value.unwrap().to_string();
+        expires_str.push(' ');
         expires_str.push_str(self.time_offset.as_str());
         let expires = DateTime::parse_from_str(&expires_str, "%Y-%m-%d %H:%M:%S %z");
 

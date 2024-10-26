@@ -19,22 +19,16 @@ use crate::{
     },
     parser, tokenizer,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 pub struct ChiritoriConfiguration {
     pub delimiter_start: String,
     pub delimiter_end: String,
     pub time_limited_configuration: TimeLimitedConfiguration,
-}
-
-impl Default for ChiritoriConfiguration {
-    fn default() -> Self {
-        Self {
-            delimiter_start: String::from("<!--"),
-            delimiter_end: String::from("-->"),
-            time_limited_configuration: TimeLimitedConfiguration::default(),
-        }
-    }
+    pub marker_tag_configuration: MarkerTagConfiguration,
 }
 
 pub struct TimeLimitedConfiguration {
@@ -43,14 +37,9 @@ pub struct TimeLimitedConfiguration {
     pub current: chrono::DateTime<chrono::Local>,
 }
 
-impl Default for TimeLimitedConfiguration {
-    fn default() -> Self {
-        Self {
-            tag_name: String::from("time-limited"),
-            time_offset: String::from("+00:00"),
-            current: chrono::Local::now(),
-        }
-    }
+pub struct MarkerTagConfiguration {
+    pub tag_name: String,
+    pub marker_removal_tags: HashSet<String>,
 }
 
 pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
@@ -61,10 +50,21 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
 
     builder_map.insert(
         &config.time_limited_configuration.tag_name,
-        Box::new(remover::time_limited_evaluator::TimeLimitedEvaluator {
-            current_time: config.time_limited_configuration.current,
-            time_offset: config.time_limited_configuration.time_offset,
-        }),
+        Box::new(
+            remover::removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator {
+                current_time: config.time_limited_configuration.current,
+                time_offset: config.time_limited_configuration.time_offset,
+            },
+        ),
+    );
+
+    builder_map.insert(
+        &config.marker_tag_configuration.tag_name,
+        Box::new(
+            remover::removal_evaluator::marker_evaluator::MarkerEvaluator {
+                marker_removal_names: config.marker_tag_configuration.marker_removal_tags,
+            },
+        ),
     );
 
     let remove_strategy_map: RemoveStrategies = vec![
@@ -109,6 +109,10 @@ mod tests {
                 tag_name: String::from("time-limited"),
                 current: Local::now(),
                 time_offset: String::from("+00:00"),
+            },
+            marker_tag_configuration: MarkerTagConfiguration {
+                tag_name: String::from("marker"),
+                marker_removal_tags: HashSet::from([String::from("feature1")]),
             },
         }
     }
@@ -181,6 +185,14 @@ if (isReleased) {
   /* </time-limited> */
 }
 /* </time-limited> */
+
+/* <marker name="feature1"> */
+console.log("Temporary code while feature1 is not released")
+/* </marker> */
+
+/* <marker name="feature2"> */
+console.log("Temporary code while feature2 is not released")
+/* </marker> */
 "#,
         );
         let expected = String::from(
@@ -192,6 +204,11 @@ console.log("Released!")
 /* <time-limited to="9999-01-01 00:00:00"> */
 console.log("Temporary code until 9999/01/01")
 /* </time-limited> */
+
+
+/* <marker name="feature2"> */
+console.log("Temporary code while feature2 is not released")
+/* </marker> */
 "#,
         );
 

@@ -1,6 +1,5 @@
 pub mod marker;
 pub mod removal_evaluator;
-pub mod time_limited_evaluator;
 
 use crate::parser;
 use crate::parser::ContentPart;
@@ -120,7 +119,7 @@ mod tests {
             unwrap_block_marker_builder::UnwrapBlockMarkerBuilder,
         },
     };
-    use time_limited_evaluator::TimeLimitedEvaluator;
+    use removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator;
 
     use super::*;
     use crate::tokenizer;
