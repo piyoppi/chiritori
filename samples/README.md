@@ -11,7 +11,7 @@ chiritori --filename=./sample-code.html
 ## JavaScript
 
 ```
-chiritori --filename=./sample-code.js --delimiter-start="// --" --delimiter-end="-- //" --time-limited-tag-name="time-limited-code"
+chiritori --filename=./samples/sample-code.js --delimiter-start="// --" --delimiter-end="-- //" --time-limited-tag-name="time-limited-code" --removal-marker-target-name="awesome-feature"
 ```
 
 ## PHP (EUC-JP encoding)

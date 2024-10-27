@@ -1,4 +1,20 @@
-# 0.3.0
+# Chiritori Changelog
+
+## 1.0.0
+
+### Features
+
+See README for details of the additional features.
+
+- Add `marker` removal tag
+- Add `unwrap-block` removal strategy
+- Add `skip` attribute (to skip removal process)
+
+### Breaking Changed
+
+- Default delimiters is changed from `<!--`, `-->` to `<!-- <`, `> -->`
+
+## 0.3.0
 
 The formatting process performed after the deletion of time-limited content has been improved. (https://github.com/piyoppi/chiritori/pull/5, https://github.com/piyoppi/chiritori/pull/6)
 
@@ -41,10 +57,10 @@ foo
 bar
 ```
 
-# 0.2.0
+## 0.2.0
 
 Stdin is only received from pipes (https://github.com/piyoppi/chiritori/pull/3)
 
-# 0.1.0
+## 0.1.0
 
 Initial Release
