@@ -6,6 +6,7 @@ on:
       - main
     tags:
       - 'v*.*.*'
+
 jobs:
   build:
     strategy:
@@ -104,9 +105,17 @@ jobs:
           prerelease: true
           files: chiritori-*
 
-      - name: Create Release(Release)
+      - name: Create Release (Release)
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-alpha') && !contains(github.ref, '-beta')
         with:
           tag_name: ${{ github.ref }}
           files: chiritori-*
+
+      - name: Create Release (Prerelease)
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v') && (contains(github.ref, '-alpha') || contains(github.ref, '-beta'))
+        with:
+          tag_name: ${{ github.ref }}
+          files: chiritori-*
+          prerelease: true
