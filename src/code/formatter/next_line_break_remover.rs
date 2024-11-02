@@ -27,7 +27,7 @@ impl Formatter for NextLineBreakRemover {
     /// let content = "foo+    +  +    bar".replace('+', "\n");
     /// assert_eq!(remover.format(&content, 7, 0), (7, 11));
     /// ```
-    fn format(&self, content: &str, byte_pos: usize, _next_byte_pos: usize) -> (usize, usize) {
+    fn format(&self, content: &str, byte_pos: usize, _prev_byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 
         let line_break_pos = find_next_line_break_pos(content, bytes, byte_pos, true)

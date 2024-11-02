@@ -8,7 +8,7 @@ pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
 
 pub trait Formatter {
-    fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize);
+    fn format(&self, content: &str, byte_pos: usize, prev_byte_pos: usize) -> (usize, usize);
 }
 
 pub trait BlockFormatter {

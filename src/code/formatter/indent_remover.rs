@@ -22,7 +22,7 @@ impl Formatter for IndentRemover {
     /// let content = "foo+    +    +    bar".replace('+', "\n");
     /// assert_eq!(remover.format(&content, 8, 0), (4, 8));
     /// ```
-    fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize) {
+    fn format(&self, content: &str, byte_pos: usize, prev_byte_pos: usize) -> (usize, usize) {
         let mut cursor = byte_pos;
         let bytes = content.as_bytes();
 
@@ -37,7 +37,7 @@ impl Formatter for IndentRemover {
 
             cursor -= 1;
 
-            if cursor <= next_byte_pos {
+            if cursor <= prev_byte_pos {
                 break false;
             }
 

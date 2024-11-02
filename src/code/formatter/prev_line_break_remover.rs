@@ -28,14 +28,14 @@ impl Formatter for PrevLineBreakRemover {
     /// let content = "  hoge+ +    +    foo".replace('+', "\n");
     /// assert_eq!(remover.format(&content, 12, 0), (7, 12));
     /// ```
-    fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize) {
+    fn format(&self, content: &str, byte_pos: usize, prev_byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 
         let line_break_pos = find_prev_line_break_pos(content, bytes, byte_pos, true)
             .and_then(|pos| find_prev_line_break_pos(content, bytes, pos, true));
 
         if let Some(line_break_pos) = line_break_pos {
-            if line_break_pos <= next_byte_pos {
+            if line_break_pos <= prev_byte_pos {
                 return (byte_pos, byte_pos);
             }
 
