@@ -5,6 +5,29 @@ use super::Formatter;
 pub struct PrevLineBreakRemover {}
 
 impl Formatter for PrevLineBreakRemover {
+    /// Return the range of a blank line to be removed.
+    ///
+    /// If two consecutive blank lines start at the removal position,
+    /// the preceding blank line is removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// //           input               output           removed
+    /// //  +----------------+    +----------------+    +---------+
+    /// //  |  . . h o g e + |    |  . . h o g e + |    | ..hoge+ |
+    /// //  |  . +           | => | [. +           | => | .+      |
+    /// //  |  . . .]. +     |    |  . . .]. +     |    | ....foo |
+    /// //  |  . . . . f o o |    |  . . . . f o o |    |         |
+    /// //  +----------------+    +----------------+    +---------+
+    /// //
+    /// //                      10
+    /// //         pos 01234567890123456789
+    /// //             |      ------
+    /// //             |      Removal an empty line
+    /// let content = "  hoge+ +    +    foo".replace('+', "\n");
+    /// assert_eq!(remover.format(&content, 12, 0), (7, 12));
+    /// ```
     fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 

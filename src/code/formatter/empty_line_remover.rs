@@ -7,6 +7,41 @@ use super::Formatter;
 pub struct EmptyLineRemover {}
 
 impl Formatter for EmptyLineRemover {
+    /// Return the range of blank spaces to be deleted.
+    ///
+    /// If the line immediately after the deletion position is a new line and there are no blank lines before or after it,
+    /// the new line immediately after the deletion position is deleted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// //           input                      output               removed
+    /// //  +---------------------+    +---------------------+    +-----------+
+    /// //  |  . . . . h o g e +  |    |  . . . . h o g e +  |    | ....hoge+ |
+    /// //  | [+                  | => | [+]                 | => | ..foo+    |
+    /// //  |  . . f o o +        |    |  . . f o o +        |    |           |
+    /// //  +---------------------+    +---------------------+    +-----------+
+    /// //
+    /// //                      10        20
+    /// //         pos 012345678901234
+    /// //             |        -
+    /// //             |        Removal line break
+    /// let content = "    hoge++  foo".replace('+', "\n");
+    /// assert_eq!(remover.format(&content, 9, 0), (9, 10));
+    ///
+    /// //           input           removed (No changed)
+    /// //  +---------------------+    +-----------+
+    /// //  |  . . . . h o g e +  |    | ....hoge+ |
+    /// //  | [+                  | => | +         |
+    /// //  |  +                  |    | +         |
+    /// //  |  . . f o o +        |    | ..foo+    |
+    /// //  +---------------------+    +-----------+
+    /// //
+    /// //                      10        20
+    /// //         pos 01234567890123456789012
+    /// let content = "    hoge+++  foo".replace('+', "\n");
+    /// assert_eq!(remover.format(&content, 9, 0), (9, 9));
+    /// ```
     fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 

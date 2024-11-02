@@ -2,6 +2,26 @@ use super::Formatter;
 pub struct IndentRemover {}
 
 impl Formatter for IndentRemover {
+    /// Return the range of blank spaces ( = an indent ) to be deleted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// //           input                      output               removed
+    /// //  +---------------------+    +---------------------+    +-----------+
+    /// //  |  f o o +            |    |  f o o +            |    | foo+      |
+    /// //  |  . . . .]+          | => | [. . . .]+          | => | +         |
+    /// //  |  . . . . +          |    |  . . . . +          |    | ....+     |
+    /// //  |  . . . . b a r      |    |  . . . . b a r      |    | ....bar   |
+    /// //  +---------------------+    +---------------------+    +-----------+
+    /// //
+    /// //                      10        20
+    /// //         pos 01234567890123456789012
+    /// //             |   ----
+    /// //             |   Removal spaces
+    /// let content = "foo+    +    +    bar".replace('+', "\n");
+    /// assert_eq!(remover.format(&content, 8, 0), (4, 8));
+    /// ```
     fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize) {
         let mut cursor = byte_pos;
         let bytes = content.as_bytes();

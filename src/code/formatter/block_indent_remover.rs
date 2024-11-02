@@ -8,6 +8,32 @@ use std::ops::Range;
 pub struct BlockIndentRemover {}
 
 impl BlockFormatter for BlockIndentRemover {
+    /// Return ranges of indents to be removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// //         input                output            removed
+    /// //  +----------------+    +----------------+    +---------+
+    /// //  |  f o o +       |    |  f o o +       |    | foo+    |
+    /// //  | [+             |    |  +             |    | +       |
+    /// //  |  . . f u g a + |    | [. .]f u g a + |    | fuga+   |
+    /// //  |  . . p i y o + | => | [. .]p i y o + | => | piyo+   |
+    /// //  |  +]            |    |  +             |    | +       |
+    /// //  |  b a r         |    |  b a r         |    | bar     |
+    /// //  +----------------+    +----------------+    +---------+
+    /// //
+    /// //                      10        20
+    /// //         pos 01234567890123456789012
+    /// //             |   |~~     ~~     |
+    /// //             |   |^      ^      |
+    /// //             |   |removal ranges|
+    /// //             |   |              |
+    /// //             |   | block range  |
+    /// //             |   |<------------>|
+    /// let content = "foo++  fuga+  piyo++bar".replace('+', "\n");
+    /// assert_eq!(remover.format(&content, 4, 19), vec![5..7, 12..14]);
+    /// ```
     fn format(
         &self,
         content: &str,

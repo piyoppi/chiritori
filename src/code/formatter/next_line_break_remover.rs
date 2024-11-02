@@ -4,6 +4,29 @@ use super::Formatter;
 pub struct NextLineBreakRemover {}
 
 impl Formatter for NextLineBreakRemover {
+    /// Return the range of a blank line to be removed.
+    ///
+    /// If there are two consecutive blank lines from the removal position,
+    /// the immediately following blank line is removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// //           input                     output             removed
+    /// //  +--------------------+    +--------------------+    +---------+
+    /// //  |  f o o +           |    |  f o o +           |    | foo+    |
+    /// //  |  . . .[. +         | => |  . . .[. +         | => | ...+    |
+    /// //  |  . . +             |    |  . .]+             |    | ....bar |
+    /// //  |  . . . .  b a r    |    |  . . . .  b a r    |    |         |
+    /// //  +--------------------+    +--------------------+    +---------+
+    /// //
+    /// //                      10
+    /// //         pos 0123456789012345678
+    /// //             |     -----
+    /// //             |     Removal an empty line
+    /// let content = "foo+    +  +    bar".replace('+', "\n");
+    /// assert_eq!(remover.format(&content, 7, 0), (7, 11));
+    /// ```
     fn format(&self, content: &str, byte_pos: usize, _next_byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 
