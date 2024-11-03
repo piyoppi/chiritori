@@ -8,7 +8,7 @@ pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
 
 pub trait Formatter {
-    fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize);
+    fn format(&self, content: &str, byte_pos: usize) -> (usize, usize);
 }
 
 pub trait BlockFormatter {
@@ -30,9 +30,8 @@ pub fn format(
     let mut open_structure_remove_range: Vec<Range<usize>> = vec![];
 
     let removed_pos_iter = removed_pos.iter();
-    let mut prev_pos = 0;
     for (pos, pair_idx) in removed_pos_iter {
-        let range = format_block(content, *pos, prev_pos, formatters);
+        let range = format_block(content, *pos, formatters);
         ranges.push(range);
 
         if let Some(pair_idx) = pair_idx {
@@ -45,7 +44,6 @@ pub fn format(
                 open_structure_remove_range.extend(ranges);
             }
         }
-        prev_pos = *pos;
     }
 
     merge_ranges(&mut ranges, open_structure_remove_range);
@@ -64,13 +62,12 @@ pub fn format(
 fn format_block(
     content: &str,
     pos: usize,
-    prev_pos: usize,
     formatters: &[Box<dyn Formatter>],
 ) -> Range<usize> {
     formatters.iter().fold(pos..pos, |range, f| {
-        let (start, end) = f.format(content, pos, prev_pos);
-        let start = std::cmp::max(start.min(range.start), prev_pos);
-        let end = std::cmp::max(end.max(range.end), pos);
+        let (start, end) = f.format(content, pos);
+        let start = start.min(range.start);
+        let end = end.max(range.end);
 
         start..end
     })
@@ -230,8 +227,22 @@ mod tests {
             "    hoge++    foo+".replace('+', "\n")
         );
 
-        // RemovePos 31 is unprossed because it conflicts with RemovePos 26
-        //
+        //                       10        20       30        40
+        //             0123456789012345678901234567890123456789012
+        //                                       ^    ^
+        let content = "+<div>+    +    +    +    +    +</div>".replace('+', "\n");
+        let removed_pos = [(27, None), (32, None)];
+        assert_eq!(
+            format(
+                &content,
+                &removed_pos,
+                &[Box::new(prev_line_break_remover::PrevLineBreakRemover {}),],
+                &[]
+            ),
+            //123456789012345678901234567890123456789012345
+            "+<div>+    +    +    +</div>".replace('+', "\n")
+        );
+
         //                       10        20       30        40
         //             0123456789012345678901234567890123456789012
         //                                       ^    ^
@@ -245,8 +256,9 @@ mod tests {
                 &[]
             ),
             //123456789012345678901234567890123456789012345
-            "+<div>+    +    ++    +</div>".replace('+', "\n")
+            "+<div>+    +    ++</div>".replace('+', "\n")
         );
+
 
         //                       10        20
         //             012345678901234567890123

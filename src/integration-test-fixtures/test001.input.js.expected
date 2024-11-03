@@ -1,0 +1,25 @@
+async function main() {
+  console.log('Hello, World! 1');
+
+  /* < time-limited to="2099-12-31 23:59:59" > */
+    console.log('📌This code will be removed after 2099-12-31T23:59:59.999Z');
+  /* < /time-limited > */
+
+  const isReleased = await fetch('https://example.test/features/awesome-feature')
+
+  console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z');
+  const awesomeFeature = new awesomeFeature()
+  awesomeFeature.run();
+
+  for (let i = 0; i < 10; i++) {
+    console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z');
+    awesomeFeature.add(i);
+  }
+
+console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z');
+
+  /* If the indentation of the marker is greater than the indentation of the block, it cannot be removed. */
+    console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z');
+
+  console.log('Hello, World! 2');
+}

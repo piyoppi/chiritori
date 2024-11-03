@@ -2,7 +2,27 @@ use super::Formatter;
 pub struct IndentRemover {}
 
 impl Formatter for IndentRemover {
-    fn format(&self, content: &str, byte_pos: usize, next_byte_pos: usize) -> (usize, usize) {
+    /// Return the range of blank spaces ( = an indent ) to be deleted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// //           input                      output               removed
+    /// //  +---------------------+    +---------------------+    +-----------+
+    /// //  |  f o o +            |    |  f o o +            |    | foo+      |
+    /// //  |  . . . .]+          | => | [. . . .]+          | => | +         |
+    /// //  |  . . . . +          |    |  . . . . +          |    | ....+     |
+    /// //  |  . . . . b a r      |    |  . . . . b a r      |    | ....bar   |
+    /// //  +---------------------+    +---------------------+    +-----------+
+    /// //
+    /// //                      10        20
+    /// //         pos 01234567890123456789012
+    /// //             |   ----
+    /// //             |   Removal spaces
+    /// let content = "foo+    +    +    bar".replace('+', "\n");
+    /// assert_eq!(remover.format(&content, 8, 0), (4, 8));
+    /// ```
+    fn format(&self, content: &str, byte_pos: usize) -> (usize, usize) {
         let mut cursor = byte_pos;
         let bytes = content.as_bytes();
 
@@ -16,10 +36,6 @@ impl Formatter for IndentRemover {
             }
 
             cursor -= 1;
-
-            if cursor <= next_byte_pos {
-                break false;
-            }
 
             let current = bytes.get(cursor);
 
@@ -59,13 +75,7 @@ mod tests {
         //             0123456789012345678901234567890123
         //             |               ^   ^
         let content = "+<div>+    hoge+    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 20, 0), (16, 20));
-
-        //                      10        20        30
-        //             0123456789012345678901234567890123
-        //             |  (remove marker)^ ^
-        let content = "+<div>+    hoge+    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 20, 18), (20, 20));
+        assert_eq!(remover.format(&content, 20), (16, 20));
 
         // if next char is '\n', and previous char is not space, do nothing
         //
@@ -73,7 +83,7 @@ mod tests {
         //             0123456789012345678901234567890123
         //             |            ^
         let content = "+<div>+hoge++++baz</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 13, 0), (13, 13));
+        assert_eq!(remover.format(&content, 13), (13, 13));
 
         // if next char is not '\n', do nothing
         //
@@ -81,7 +91,7 @@ mod tests {
         //             012345678901
         //             |      ^
         let content = "hoge+  a+baz".replace('+', "\n");
-        assert_eq!(remover.format(&content, 7, 0), (7, 7));
+        assert_eq!(remover.format(&content, 7), (7, 7));
 
         // if next char is not '\n', do nothing
         //
@@ -89,7 +99,7 @@ mod tests {
         //             012345678901
         //             | ^
         let content = "  +baz".replace('+', "\n");
-        assert_eq!(remover.format(&content, 2, 0), (2, 2));
+        assert_eq!(remover.format(&content, 2), (2, 2));
 
         // if char boundary is invalid, do nothing
         //
@@ -97,12 +107,12 @@ mod tests {
         //             0123456789.2345678901234567890123
         //             |         ^
         let content = "+<div>+  あ  +    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 10, 0), (10, 10));
+        assert_eq!(remover.format(&content, 10), (10, 10));
 
         let content = "".to_string();
-        assert_eq!(remover.format(&content, 0, 0), (0, 0));
+        assert_eq!(remover.format(&content, 0), (0, 0));
 
         let content = "\n".to_string();
-        assert_eq!(remover.format(&content, 0, 0), (0, 0));
+        assert_eq!(remover.format(&content, 0), (0, 0));
     }
 }
