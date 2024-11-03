@@ -11,3 +11,6 @@ edition = "2021"
 chrono = "0.4.34"
 clap = { version = "4.5.1", features = ["derive"] }
 atty = "0.2"
+
+[dev-dependencies]
+rstest = "0.23.0"

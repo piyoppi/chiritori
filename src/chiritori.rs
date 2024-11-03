@@ -99,7 +99,11 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::prelude::*;
     use chrono::Local;
+    use rstest::rstest;
+    use std::{fs::File, path::PathBuf};
+    use std::ffi::OsString;
 
     fn create_test_config(delimiter_start: &str, delimiter_end: &str) -> ChiritoriConfiguration {
         ChiritoriConfiguration {
@@ -215,5 +219,28 @@ console.log("Temporary code while feature2 is not released")
         let result = clean(content.into(), config);
 
         assert_eq!(result, expected);
+    }
+
+    #[rstest]
+    fn should_clean_with_js(
+        #[files("src/integration-test-fixtures/*.input.js")] path_input: PathBuf,
+    ) {
+        let mut path_expected = path_input.clone();
+        let mut filename_expected = OsString::from(path_input.file_name().unwrap());
+        filename_expected.push(".expected");
+        path_expected.set_file_name(filename_expected);
+
+        let mut f_input = File::open(path_input).unwrap();
+        let mut f_expected = File::open(path_expected).unwrap();
+        let mut input_content = String::new();
+        let mut expected_content = String::new();
+
+        f_input.read_to_string(&mut input_content).expect("Failed to load input a content file");
+        f_expected.read_to_string(&mut expected_content).expect("Failed to load an expected content file");
+
+        let config = create_test_config("/* <", "> */");
+        let result = clean(input_content.into(), config);
+
+        assert_eq!(result, expected_content);
     }
 }
