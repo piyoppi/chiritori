@@ -230,8 +230,22 @@ mod tests {
             "    hoge++    foo+".replace('+', "\n")
         );
 
-        // RemovePos 31 is unprossed because it conflicts with RemovePos 26
-        //
+        //                       10        20       30        40
+        //             0123456789012345678901234567890123456789012
+        //                                       ^    ^
+        let content = "+<div>+    +    +    +    +    +</div>".replace('+', "\n");
+        let removed_pos = [(27, None), (32, None)];
+        assert_eq!(
+            format(
+                &content,
+                &removed_pos,
+                &[Box::new(prev_line_break_remover::PrevLineBreakRemover {}),],
+                &[]
+            ),
+            //123456789012345678901234567890123456789012345
+            "+<div>+    +    +    +</div>".replace('+', "\n")
+        );
+
         //                       10        20       30        40
         //             0123456789012345678901234567890123456789012
         //                                       ^    ^
@@ -245,8 +259,9 @@ mod tests {
                 &[]
             ),
             //123456789012345678901234567890123456789012345
-            "+<div>+    +    ++    +</div>".replace('+', "\n")
+            "+<div>+    +    ++</div>".replace('+', "\n")
         );
+
 
         //                       10        20
         //             012345678901234567890123

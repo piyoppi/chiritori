@@ -22,7 +22,7 @@ impl Formatter for IndentRemover {
     /// let content = "foo+    +    +    bar".replace('+', "\n");
     /// assert_eq!(remover.format(&content, 8, 0), (4, 8));
     /// ```
-    fn format(&self, content: &str, byte_pos: usize, prev_byte_pos: usize) -> (usize, usize) {
+    fn format(&self, content: &str, byte_pos: usize, _prev_byte_pos: usize) -> (usize, usize) {
         let mut cursor = byte_pos;
         let bytes = content.as_bytes();
 
@@ -36,10 +36,6 @@ impl Formatter for IndentRemover {
             }
 
             cursor -= 1;
-
-            if cursor <= prev_byte_pos {
-                break false;
-            }
 
             let current = bytes.get(cursor);
 
@@ -80,12 +76,6 @@ mod tests {
         //             |               ^   ^
         let content = "+<div>+    hoge+    +    foo</div>".replace('+', "\n");
         assert_eq!(remover.format(&content, 20, 0), (16, 20));
-
-        //                      10        20        30
-        //             0123456789012345678901234567890123
-        //             |  (remove marker)^ ^
-        let content = "+<div>+    hoge+    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 20, 18), (20, 20));
 
         // if next char is '\n', and previous char is not space, do nothing
         //

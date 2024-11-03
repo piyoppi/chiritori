@@ -42,7 +42,7 @@ impl Formatter for EmptyLineRemover {
     /// let content = "    hoge+++  foo".replace('+', "\n");
     /// assert_eq!(remover.format(&content, 9, 0), (9, 9));
     /// ```
-    fn format(&self, content: &str, byte_pos: usize, prev_byte_pos: usize) -> (usize, usize) {
+    fn format(&self, content: &str, byte_pos: usize, _prev_byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 
         if !content.is_char_boundary(byte_pos) {
@@ -58,7 +58,7 @@ impl Formatter for EmptyLineRemover {
             .is_none();
         let is_not_prev_line_empty = find_prev_line_break_pos(content, bytes, byte_pos, true)
             .and_then(|pos| find_prev_line_break_pos(content, bytes, pos, true))
-            .map_or(true, |pos| pos <= prev_byte_pos);
+            .is_none();
 
         if is_not_next_line_empty && is_not_prev_line_empty {
             (byte_pos, byte_pos + 1)
@@ -81,13 +81,6 @@ mod tests {
         //             |        ^
         let content = "    hoge++  foo".replace('+', "\n");
         assert_eq!(remover.format(&content, 9, 0), (9, 10));
-
-        //                      10
-        //             0123456789012345
-        //       (remove marker)^|
-        //             |         ^
-        let content = "    hoge+++  foo".replace('+', "\n");
-        assert_eq!(remover.format(&content, 10, 9), (10, 11));
 
         //                      10
         //             0123456789012345
