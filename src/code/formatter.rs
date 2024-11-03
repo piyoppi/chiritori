@@ -8,7 +8,7 @@ pub mod next_line_break_remover;
 pub mod prev_line_break_remover;
 
 pub trait Formatter {
-    fn format(&self, content: &str, byte_pos: usize, prev_byte_pos: usize) -> (usize, usize);
+    fn format(&self, content: &str, byte_pos: usize) -> (usize, usize);
 }
 
 pub trait BlockFormatter {
@@ -68,7 +68,7 @@ fn format_block(
     formatters: &[Box<dyn Formatter>],
 ) -> Range<usize> {
     formatters.iter().fold(pos..pos, |range, f| {
-        let (start, end) = f.format(content, pos, prev_pos);
+        let (start, end) = f.format(content, pos);
         let start = std::cmp::max(start.min(range.start), prev_pos);
         let end = std::cmp::max(end.max(range.end), pos);
 

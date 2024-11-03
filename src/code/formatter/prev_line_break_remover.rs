@@ -28,7 +28,7 @@ impl Formatter for PrevLineBreakRemover {
     /// let content = "  hoge+ +    +    foo".replace('+', "\n");
     /// assert_eq!(remover.format(&content, 12, 0), (7, 12));
     /// ```
-    fn format(&self, content: &str, byte_pos: usize, _prev_byte_pos: usize) -> (usize, usize) {
+    fn format(&self, content: &str, byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
 
         let line_break_pos = find_prev_line_break_pos(content, bytes, byte_pos, true)
@@ -54,58 +54,58 @@ mod tests {
         //             012345678901234567890123456
         //             |             ^
         let content = "    hoge++    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 14, 0), (9, 14));
+        assert_eq!(remover.format(&content, 14), (9, 14));
 
         //                      10        20
         //             012345678901234567890123456
         //             |            ^
         let content = "    hoge+    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 13, 0), (13, 13));
+        assert_eq!(remover.format(&content, 13), (13, 13));
 
         //                      10        20
         //             012345678901234567890123456
         //             |            ^
         let content = "    hoge+  x +    foo</div>".replace('+', "\n");
         let remover = PrevLineBreakRemover {};
-        assert_eq!(remover.format(&content, 13, 0), (13, 13));
+        assert_eq!(remover.format(&content, 13), (13, 13));
 
         //                      10        20
         //             0123456789012345678901234567
         //             |             ^
         let content = "    hoge +    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 14, 0), (14, 14));
+        assert_eq!(remover.format(&content, 14), (14, 14));
 
         //                      10        20
         //             0123456789012345678901234567
         //             |            ^
         let content = "    hoge +    +    foo</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 13, 0), (13, 13));
+        assert_eq!(remover.format(&content, 13), (13, 13));
 
         //                      10
         //             012345678901234567
         //             |      ^
         let content = "+hoge++++baz</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 7, 0), (6, 7));
+        assert_eq!(remover.format(&content, 7), (6, 7));
 
         //                      10
         //             01234567890123
         //             |  ^
         let content = "+++++baz</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 3, 0), (2, 3));
+        assert_eq!(remover.format(&content, 3), (2, 3));
 
         //                      10
         //             01234567890123
         //             |  ^
         let content = "aaaabaz</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 3, 0), (3, 3));
+        assert_eq!(remover.format(&content, 3), (3, 3));
 
         //                     10
         //             012345.890123
         //             |     ^
         let content = "aaa+ あ</div>".replace('+', "\n");
-        assert_eq!(remover.format(&content, 7, 0), (7, 7));
+        assert_eq!(remover.format(&content, 7), (7, 7));
 
         let content = "\n".to_string();
-        assert_eq!(remover.format(&content, 0, 0), (0, 0));
+        assert_eq!(remover.format(&content, 0), (0, 0));
     }
 }
