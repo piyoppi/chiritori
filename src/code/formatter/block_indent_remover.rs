@@ -47,7 +47,12 @@ impl BlockFormatter for BlockIndentRemover {
             None => 0,
         };
         let mut current_pos = start_byte_pos + 1;
-        let indent_len = get_indent_len(content, current_pos) - indent_ofs;
+        let first_indent_len = get_indent_len(content, current_pos);
+        let indent_len = if first_indent_len > indent_ofs {
+            first_indent_len - indent_ofs
+        } else {
+            0
+        };
 
         let mut positions = vec![];
         while end_byte_pos > current_pos {
@@ -131,6 +136,28 @@ mod tests {
         //             |   ^<>      <>     ^
         let content = "foo++  fuga++  piyo++bar".replace('+', "\n");
         assert_eq!(remover.format(&content, 4, 20), vec![5..7, 13..15]);
+
+        // If the indentation of the marker is greater than the indentation of the block, it cannot be removed.
+        //
+        //   original       removed       formatted
+        // +---------+    +---------+    +---------+
+        // | foo+    |    | foo+    |    | foo+    |
+        // | ...<rm>+|    | ...+    |    | ...+    |
+        // | if {+   |    | ..fuga+ |    | ..fuga+ |
+        // | ..fuga+ | => | +       |    | +       |
+        // | +       |    | ..piyo+ | => | piyo+   |
+        // | ..piyo+ |    | +       |    | +       |
+        // | }+      |    | bar     |    | bar     |
+        // | </rm>+  |    |         |    |         |
+        // | bar+    |    |         |    |         |
+        // +---------+    +---------+    +---------+
+        //
+        //                      10        20
+        //             012345678901234567890123456
+        //             |      ^               ^
+        let content = "foo+   +  fuga++  piyo++bar".replace('+', "\n");
+        assert_eq!(remover.format(&content, 7, 20), vec![]);
+
 
         //    original          removed          formatted
         // +------------+    +------------+    +------------+
