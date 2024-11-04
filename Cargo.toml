@@ -1,7 +1,7 @@
 [package]
 name = "chiritori"
-version = "0.3.0"
-description = "A tool for finding and removing time-limited source code"
+version = "1.0.0"
+description = "A tool for removing time-limited source code"
 repository = "https://github.com/piyoppi/chiritori"
 license = "MIT"
 authors = ["piyoppi"]
