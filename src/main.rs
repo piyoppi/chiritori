@@ -41,10 +41,11 @@ struct Args {
     #[arg(long, default_value = "")]
     time_limited_current: String,
 
-    /// The tag name for marker
-    #[arg(long, default_value = "marker")]
+    /// The tag name for removal-marker
+    #[arg(long, default_value = "removal-marker")]
     marker_tag_name: String,
 
+    /// Name of removal-marker to be removed
     #[arg(long, default_value = "vec![]")]
     marker_removal_names: Vec<String>,
 }
