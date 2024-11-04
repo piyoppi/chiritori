@@ -43,11 +43,11 @@ struct Args {
 
     /// The tag name for removal-marker
     #[arg(long, default_value = "removal-marker")]
-    marker_tag_name: String,
+    removal_marker_tag_name: String,
 
     /// Name of removal-marker to be removed
     #[arg(long, default_value = "vec![]")]
-    marker_removal_names: Vec<String>,
+    removal_marker_target_name: Vec<String>,
 }
 
 fn main() {
@@ -70,7 +70,7 @@ fn main() {
     }
 
     let content = Rc::new(content);
-    let marker_removal_tags = HashSet::from_iter(args.marker_removal_names);
+    let marker_removal_tags = HashSet::from_iter(args.removal_marker_target_name);
 
     let config = ChiritoriConfiguration {
         delimiter_start: args.delimiter_start,
@@ -84,7 +84,7 @@ fn main() {
                 .unwrap_or(chrono::Local::now()),
         },
         marker_tag_configuration: MarkerTagConfiguration {
-            tag_name: args.marker_tag_name,
+            tag_name: args.removal_marker_tag_name,
             marker_removal_tags,
         },
     };
