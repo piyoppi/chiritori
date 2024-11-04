@@ -37,6 +37,13 @@ async function main() {
   }
 /* < /time-limited > */
 
+  /* unwrap-block requires a removal target immediately after the start tag and immediately before the end tag. */
+  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+  /* < /time-limited > */
+  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+  foo()
+  /* < /time-limited > */
+
   /* If the indentation of the marker is greater than the indentation of the block, it cannot be removed. */
         /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
   if (isReleased) {
@@ -44,5 +51,8 @@ async function main() {
   }
         /* < /time-limited > */
 
+  /* unwrap-block requires a line break immediately after the start tag and immediately before the end tag. */
+  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */ foo() /* < /time-limited > */
+  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > *//* < /time-limited > */
   console.log('Hello, World! 2');
 }

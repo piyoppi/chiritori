@@ -21,27 +21,37 @@ impl MarkerBuilder for UnwrapBlockMarkerBuilder {
             find_prev_line_break_pos(self.content.as_ref(), bytes, el.end_token.byte_start, false)
                 .and_then(|pos| find_prev_line_break_pos(self.content.as_ref(), bytes, pos, false));
 
+        // If the range is invalid, do nothing.
         match (start_el_remove_end_pos, end_el_remove_start_pos) {
-            (Some(end), Some(start)) => (
-                el.start_token.byte_start..end,
-                Some(start + 1..el.end_token.byte_end),
-            ),
-            _ => (el.start_token.byte_start..el.end_token.byte_end, None),
+            (Some(end), Some(start)) =>
+                if start > end {
+                    (
+                        el.start_token.byte_start..end,
+                        Some(start + 1..el.end_token.byte_end),
+                    )
+                } else {
+                    (el.start_token.byte_start..el.start_token.byte_start, None)
+                }
+            _ => (el.start_token.byte_start..el.start_token.byte_start, None),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::{parser, tokenizer};
 
-    #[test]
-    fn test_build() {
-        //                              10        20        30
-        //                     012345678901234567890123456789012345
-        //                     |       ^---------^  ^----------^
-        let content = Rc::new("foo+bar+<remove>+{+b+}+</remove>+baz".replace('+', "\n"));
+    #[rstest]
+    //             10        20        30
+    //     012345678901234567890123456789012345
+    //     |       ^---------^  ^----------^
+   #[case("foo+bar+<remove>+{+b+}+</remove>+baz", 8..18, Some(21..32))]
+   #[case("foo+bar+<remove> {b} </remove>+baz+", 8..8, None)]
+    fn test_build(#[case] input: String, #[case] expected_start_range: Range<usize>, #[case] expected_end_range: Option<Range<usize>>) {
+        let content = Rc::new(input.replace('+', "\n"));
 
         let builder = UnwrapBlockMarkerBuilder {
             content: Rc::clone(&content),
@@ -62,6 +72,6 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(builder.build(&parsed), (8..18, Some(21..32)));
+        assert_eq!(builder.build(&parsed), (expected_start_range, expected_end_range));
     }
 }
