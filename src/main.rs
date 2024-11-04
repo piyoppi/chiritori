@@ -22,11 +22,11 @@ struct Args {
     output: Option<String>,
 
     /// The delimiter start
-    #[arg(long, default_value = "<!--")]
+    #[arg(long, default_value = "<!-- <")]
     delimiter_start: String,
 
     /// The delimiter end
-    #[arg(long, default_value = "-->")]
+    #[arg(long, default_value = "> -->")]
     delimiter_end: String,
 
     /// The tag name for time-limited content
