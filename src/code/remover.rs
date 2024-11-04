@@ -58,6 +58,11 @@ fn build_remove_marker(
                         true => create(el, remove_strategy_map),
                         false => None,
                     })
+                    .and_then(|(range, closed_range)| if !range.is_empty() {
+                        Some((range, closed_range))
+                    } else {
+                        None
+                    })
             };
 
             let child_markers =
