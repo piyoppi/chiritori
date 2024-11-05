@@ -1,5 +1,7 @@
 # 🧹 Chiritori
 
+<img src="./images/chiritori.png" alt="logo" width="400" height="323">
+
 'Chiritori' is a tool for removing time-limited source code.
 The application can pre-tag source code (e.g. using comments) and remove them when required.
 
