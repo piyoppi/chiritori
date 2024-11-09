@@ -132,12 +132,12 @@ fn check_delimiter_start<'a, 'b>(c: &char, delimiter_start: &'a str) -> State<'a
     }
 }
 
-fn get_state<'a, 'b, 'c>(
+fn get_state<'a, 'b>(
     c: &char,
-    delimiter_start: &'b str,
-    delimiter_end: &'c str,
-    state: State<'b, 'c>,
-) -> (Option<TokenKind<'b, 'c>>, State<'b, 'c>) {
+    delimiter_start: &'a str,
+    delimiter_end: &'b str,
+    state: State<'a, 'b>,
+) -> (Option<TokenKind<'a, 'b>>, State<'a, 'b>) {
     match state {
         State::Text => match check_delimiter_start(c, delimiter_start) {
             State::DelimiterStart(delimiter_start_chars) => (
@@ -383,7 +383,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            tokenize(&"<!--r-->gb", "<!--", "-->"),
+            tokenize("<!--r-->gb", "<!--", "-->"),
             vec![
                 Token {
                     value: "<!--r-->",

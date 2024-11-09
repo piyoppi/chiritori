@@ -99,11 +99,11 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::prelude::*;
     use chrono::Local;
     use rstest::rstest;
-    use std::{fs::File, path::PathBuf};
     use std::ffi::OsString;
+    use std::io::prelude::*;
+    use std::{fs::File, path::PathBuf};
 
     fn create_test_config(delimiter_start: &str, delimiter_end: &str) -> ChiritoriConfiguration {
         ChiritoriConfiguration {
@@ -235,8 +235,12 @@ console.log("Temporary code while feature2 is not released")
         let mut input_content = String::new();
         let mut expected_content = String::new();
 
-        f_input.read_to_string(&mut input_content).expect("Failed to load input a content file");
-        f_expected.read_to_string(&mut expected_content).expect("Failed to load an expected content file");
+        f_input
+            .read_to_string(&mut input_content)
+            .expect("Failed to load input a content file");
+        f_expected
+            .read_to_string(&mut expected_content)
+            .expect("Failed to load an expected content file");
 
         let config = create_test_config("/* <", "> */");
         let result = clean(input_content.into(), config);

@@ -59,11 +59,7 @@ pub fn format(
         })
 }
 
-fn format_block(
-    content: &str,
-    pos: usize,
-    formatters: &[Box<dyn Formatter>],
-) -> Range<usize> {
+fn format_block(content: &str, pos: usize, formatters: &[Box<dyn Formatter>]) -> Range<usize> {
     formatters.iter().fold(pos..pos, |range, f| {
         let (start, end) = f.format(content, pos);
         let start = start.min(range.start);
@@ -258,7 +254,6 @@ mod tests {
             //123456789012345678901234567890123456789012345
             "+<div>+    +    ++</div>".replace('+', "\n")
         );
-
 
         //                       10        20
         //             012345678901234567890123
