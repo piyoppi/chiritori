@@ -15,6 +15,7 @@ use crate::{
                 factory::RemoveStrategies,
             },
             removal_evaluator::RemovalEvaluator,
+            Remover,
         },
     },
     parser, tokenizer,
@@ -46,10 +47,10 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
     let tokens = tokenizer::tokenize(&content, &config.delimiter_start, &config.delimiter_end);
 
     let parsed = parser::parse(&tokens);
-    let mut builder_map: HashMap<&str, Box<dyn RemovalEvaluator>> = HashMap::new();
+    let mut builder_map: HashMap<String, Box<dyn RemovalEvaluator>> = HashMap::new();
 
     builder_map.insert(
-        &config.time_limited_configuration.tag_name,
+        config.time_limited_configuration.tag_name,
         Box::new(
             remover::removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator {
                 current_time: config.time_limited_configuration.current,
@@ -59,7 +60,7 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
     );
 
     builder_map.insert(
-        &config.marker_tag_configuration.tag_name,
+        config.marker_tag_configuration.tag_name,
         Box::new(
             remover::removal_evaluator::marker_evaluator::MarkerEvaluator {
                 marker_removal_names: config.marker_tag_configuration.marker_removal_tags,
@@ -80,7 +81,8 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
         ),
     ];
 
-    let (removed, markers) = remover::remove(parsed, &content, &builder_map, &remove_strategy_map);
+    let remover = Remover::new(builder_map, remove_strategy_map);
+    let (removed, markers) = remover.remove(parsed, &content);
 
     let removed_pos = remover::get_removed_pos(&markers);
     let formatter: Vec<Box<dyn Formatter>> = vec![
