@@ -383,7 +383,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            tokenize(&"<!--r-->gb", "<!--", "-->"),
+            tokenize("<!--r-->gb", "<!--", "-->"),
             vec![
                 Token {
                     value: "<!--r-->",
