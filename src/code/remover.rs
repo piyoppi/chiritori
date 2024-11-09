@@ -9,7 +9,7 @@ use removal_evaluator::RemovalEvaluator;
 use std::collections::HashMap;
 use std::ops::Range;
 
-type RemoveMarker = (Range<usize>, Option<usize>);
+pub type RemoveMarker = (Range<usize>, Option<usize>);
 pub type RemovedMarker = (usize, Option<usize>);
 
 type RemovalEvaluators = HashMap<String, Box<dyn RemovalEvaluator>>;

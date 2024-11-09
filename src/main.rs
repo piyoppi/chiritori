@@ -48,6 +48,10 @@ struct Args {
     /// Name of removal-marker to be removed
     #[arg(long, default_value = "vec![]")]
     removal_marker_target_name: Vec<String>,
+
+    /// List source code to be removed
+    #[arg(short, long)]
+    list: bool,
 }
 
 fn main() {
@@ -73,8 +77,6 @@ fn main() {
     let marker_removal_tags = HashSet::from_iter(args.removal_marker_target_name);
 
     let config = ChiritoriConfiguration {
-        delimiter_start: args.delimiter_start,
-        delimiter_end: args.delimiter_end,
         time_limited_configuration: TimeLimitedConfiguration {
             tag_name: args.time_limited_tag_name,
             time_offset: args.time_limited_time_offset,
@@ -89,13 +91,17 @@ fn main() {
         },
     };
 
-    let cleaned = chiritori::clean(content, config);
+    let output = if args.list {
+        chiritori::list(content, (args.delimiter_start, args.delimiter_end), config)
+    } else {
+        chiritori::clean(content, (args.delimiter_start, args.delimiter_end), config)
+    };
 
-    if let Some(output) = args.output {
-        let mut f = File::create(output).expect("file not found");
-        f.write_all(cleaned.as_bytes())
+    if let Some(filename) = args.output {
+        let mut f = File::create(filename).expect("file not found");
+        f.write_all(output.as_bytes())
             .expect("something went wrong writing the file");
     } else {
-        print!("{}", cleaned);
+        print!("{}", output);
     }
 }
