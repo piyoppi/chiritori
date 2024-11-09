@@ -158,7 +158,6 @@ mod tests {
         let content = "foo+   +  fuga++  piyo++bar".replace('+', "\n");
         assert_eq!(remover.format(&content, 7, 20), vec![]);
 
-
         //    original          removed          formatted
         // +------------+    +------------+    +------------+
         // | ...foo+    |    | ...foo+    |    | ...foo+    |

@@ -23,7 +23,7 @@ impl MarkerBuilder for UnwrapBlockMarkerBuilder {
 
         // If the range is invalid, do nothing.
         match (start_el_remove_end_pos, end_el_remove_start_pos) {
-            (Some(end), Some(start)) =>
+            (Some(end), Some(start)) => {
                 if start > end {
                     (
                         el.start_token.byte_start..end,
@@ -32,6 +32,7 @@ impl MarkerBuilder for UnwrapBlockMarkerBuilder {
                 } else {
                     (el.start_token.byte_start..el.start_token.byte_start, None)
                 }
+            }
             _ => (el.start_token.byte_start..el.start_token.byte_start, None),
         }
     }
@@ -48,9 +49,13 @@ mod tests {
     //             10        20        30
     //     012345678901234567890123456789012345
     //     |       ^---------^  ^----------^
-   #[case("foo+bar+<remove>+{+b+}+</remove>+baz", 8..18, Some(21..32))]
-   #[case("foo+bar+<remove> {b} </remove>+baz+", 8..8, None)]
-    fn test_build(#[case] input: String, #[case] expected_start_range: Range<usize>, #[case] expected_end_range: Option<Range<usize>>) {
+    #[case("foo+bar+<remove>+{+b+}+</remove>+baz", 8..18, Some(21..32))]
+    #[case("foo+bar+<remove> {b} </remove>+baz+", 8..8, None)]
+    fn test_build(
+        #[case] input: String,
+        #[case] expected_start_range: Range<usize>,
+        #[case] expected_end_range: Option<Range<usize>>,
+    ) {
         let content = Rc::new(input.replace('+', "\n"));
 
         let builder = UnwrapBlockMarkerBuilder {
@@ -72,6 +77,9 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(builder.build(&parsed), (expected_start_range, expected_end_range));
+        assert_eq!(
+            builder.build(&parsed),
+            (expected_start_range, expected_end_range)
+        );
     }
 }
