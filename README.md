@@ -12,7 +12,7 @@ The application can pre-tag source code (e.g. using comments) and remove them wh
   - [Delimiter Settings](#delimiter-settings)
 - [Tags](#tags)
   - [`time-limited`](#time-limited)
-  - [`marker`](#marker)
+  - [`removal-marker`](#removal-marker)
 - [Removal Strategy](#removal-strategy)
   - [Range](#range-default)
   - [Unwrap Block](#unwrap-block)
