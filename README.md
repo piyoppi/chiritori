@@ -63,9 +63,7 @@ More information on Command Line Interface arguments can be found in the `chirit
 ```
 $ chiritori --help
 
-Usage: chiritori [OPTIONS]
-
-A tool for finding and removing time-limited source code
+A tool for removing time-limited source code
 
 Usage: chiritori [OPTIONS]
 
@@ -88,6 +86,8 @@ Options:
           The tag name for removal-marker [default: removal-marker]
       --removal-marker-target-name <REMOVAL_MARKER_TARGET_NAME>
           Name of removal-marker to be removed [default: vec![]]
+  -l, --list
+          List source code to be removed
   -h, --help
           Print help
   -V, --version

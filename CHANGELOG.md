@@ -1,5 +1,11 @@
 # Chiritori Changelog
 
+## 1.1.0
+
+### Features
+
+- Add `--list` Option: The feature of displaying a list of source code to be removed.
+
 ## 1.0.0
 
 ### Features
