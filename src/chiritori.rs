@@ -1,6 +1,7 @@
 use crate::{
     code::{
         formatter::{self, BlockFormatter, Formatter},
+        list::build_list,
         remover::{
             self,
             marker::{
@@ -15,6 +16,7 @@ use crate::{
                 factory::RemoveStrategies,
             },
             removal_evaluator::RemovalEvaluator,
+            Remover,
         },
     },
     parser, tokenizer,
@@ -25,8 +27,6 @@ use std::{
 };
 
 pub struct ChiritoriConfiguration {
-    pub delimiter_start: String,
-    pub delimiter_end: String,
     pub time_limited_configuration: TimeLimitedConfiguration,
     pub marker_tag_configuration: MarkerTagConfiguration,
 }
@@ -42,14 +42,46 @@ pub struct MarkerTagConfiguration {
     pub marker_removal_tags: HashSet<String>,
 }
 
-pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
-    let tokens = tokenizer::tokenize(&content, &config.delimiter_start, &config.delimiter_end);
+pub fn clean(
+    content: Rc<String>,
+    delimiters: (String, String),
+    config: ChiritoriConfiguration,
+) -> String {
+    let (delimiter_start, delimiter_end) = delimiters;
+    let tokens = tokenizer::tokenize(&content, &delimiter_start, &delimiter_end);
 
     let parsed = parser::parse(&tokens);
-    let mut builder_map: HashMap<&str, Box<dyn RemovalEvaluator>> = HashMap::new();
+    let remover = build_remover(config, content.clone());
+    let (removed, markers) = remover.remove(parsed, &content);
 
+    let removed_pos = remover::get_removed_pos(&markers);
+    let formatter = build_formatters();
+    let structure_formatters: Vec<Box<dyn BlockFormatter>> = vec![Box::new(
+        formatter::block_indent_remover::BlockIndentRemover {},
+    )];
+
+    formatter::format(&removed, &removed_pos, &formatter, &structure_formatters)
+}
+
+pub fn list(
+    content: Rc<String>,
+    delimiters: (String, String),
+    config: ChiritoriConfiguration,
+) -> String {
+    let (delimiter_start, delimiter_end) = delimiters;
+    let tokens = tokenizer::tokenize(&content, &delimiter_start, &delimiter_end);
+
+    let parsed = parser::parse(&tokens);
+    let remover = build_remover(config, content.clone());
+    let (_, markers) = remover.remove(parsed, &content);
+
+    build_list(&content, &markers)
+}
+
+fn build_remover(config: ChiritoriConfiguration, content: Rc<String>) -> Remover {
+    let mut builder_map: HashMap<String, Box<dyn RemovalEvaluator>> = HashMap::new();
     builder_map.insert(
-        &config.time_limited_configuration.tag_name,
+        config.time_limited_configuration.tag_name,
         Box::new(
             remover::removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator {
                 current_time: config.time_limited_configuration.current,
@@ -59,7 +91,7 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
     );
 
     builder_map.insert(
-        &config.marker_tag_configuration.tag_name,
+        config.marker_tag_configuration.tag_name,
         Box::new(
             remover::removal_evaluator::marker_evaluator::MarkerEvaluator {
                 marker_removal_names: config.marker_tag_configuration.marker_removal_tags,
@@ -70,9 +102,7 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
     let remove_strategy_map: RemoveStrategies = vec![
         (
             Box::new(UnwrapBlockMarkerAvailability::new("unwrap-block")),
-            Box::new(UnwrapBlockMarkerBuilder {
-                content: Rc::clone(&content),
-            }),
+            Box::new(UnwrapBlockMarkerBuilder { content }),
         ),
         (
             Box::new(RangeMarkerAvailability::default()),
@@ -80,20 +110,16 @@ pub fn clean(content: Rc<String>, config: ChiritoriConfiguration) -> String {
         ),
     ];
 
-    let (removed, markers) = remover::remove(parsed, &content, &builder_map, &remove_strategy_map);
+    Remover::new(builder_map, remove_strategy_map)
+}
 
-    let removed_pos = remover::get_removed_pos(&markers);
-    let formatter: Vec<Box<dyn Formatter>> = vec![
+fn build_formatters() -> Vec<Box<dyn Formatter>> {
+    vec![
         Box::new(formatter::indent_remover::IndentRemover {}),
         Box::new(formatter::empty_line_remover::EmptyLineRemover {}),
         Box::new(formatter::prev_line_break_remover::PrevLineBreakRemover {}),
         Box::new(formatter::next_line_break_remover::NextLineBreakRemover {}),
-    ];
-    let structure_formatters: Vec<Box<dyn BlockFormatter>> = vec![Box::new(
-        formatter::block_indent_remover::BlockIndentRemover {},
-    )];
-
-    formatter::format(&removed, &removed_pos, &formatter, &structure_formatters)
+    ]
 }
 
 #[cfg(test)]
@@ -105,10 +131,8 @@ mod tests {
     use std::io::prelude::*;
     use std::{fs::File, path::PathBuf};
 
-    fn create_test_config(delimiter_start: &str, delimiter_end: &str) -> ChiritoriConfiguration {
+    fn create_test_config() -> ChiritoriConfiguration {
         ChiritoriConfiguration {
-            delimiter_start: String::from(delimiter_start),
-            delimiter_end: String::from(delimiter_end),
             time_limited_configuration: TimeLimitedConfiguration {
                 tag_name: String::from("time-limited"),
                 current: Local::now(),
@@ -163,9 +187,9 @@ mod tests {
   </body>
 </html>"#,
         );
-
-        let config = create_test_config("<!--", "-->");
-        let result = clean(content.into(), config);
+        let config = create_test_config();
+        let delimiters = (String::from("<!--"), String::from("-->"));
+        let result = clean(content.into(), delimiters, config);
 
         assert_eq!(result, expected);
     }
@@ -215,8 +239,9 @@ console.log("Temporary code while feature2 is not released")
 "#,
         );
 
-        let config = create_test_config("/* <", "> */");
-        let result = clean(content.into(), config);
+        let config = create_test_config();
+        let delimiters = (String::from("/* <"), String::from("> */"));
+        let result = clean(content.into(), delimiters, config);
 
         assert_eq!(result, expected);
     }
@@ -242,8 +267,9 @@ console.log("Temporary code while feature2 is not released")
             .read_to_string(&mut expected_content)
             .expect("Failed to load an expected content file");
 
-        let config = create_test_config("/* <", "> */");
-        let result = clean(input_content.into(), config);
+        let config = create_test_config();
+        let delimiters = (String::from("/* <"), String::from("> */"));
+        let result = clean(input_content.into(), delimiters, config);
 
         assert_eq!(result, expected_content);
     }

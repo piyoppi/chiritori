@@ -9,23 +9,106 @@ use removal_evaluator::RemovalEvaluator;
 use std::collections::HashMap;
 use std::ops::Range;
 
-type RemoveMarker = (Range<usize>, Option<usize>);
+pub type RemoveMarker = (Range<usize>, Option<usize>);
 pub type RemovedMarker = (usize, Option<usize>);
 
-pub fn remove(
-    content: Vec<ContentPart>,
-    raw: &str,
-    builder_map: &HashMap<&str, Box<dyn RemovalEvaluator>>,
-    remove_strategy_map: &RemoveStrategies,
-) -> (String, Vec<RemoveMarker>) {
-    let markers = build_remove_marker(&content, builder_map, remove_strategy_map);
-    let mut new_content = raw.to_string();
+type RemovalEvaluators = HashMap<String, Box<dyn RemovalEvaluator>>;
 
-    for (marker, _) in markers.iter().rev() {
-        new_content.replace_range(marker.clone(), "");
+pub struct Remover {
+    removal_evaluators: RemovalEvaluators,
+    remove_strategies: RemoveStrategies,
+}
+
+impl Remover {
+    pub fn new(removal_evaluators: RemovalEvaluators, remove_strategies: RemoveStrategies) -> Self {
+        Self {
+            removal_evaluators,
+            remove_strategies,
+        }
     }
 
-    (new_content, markers)
+    pub fn remove(&self, content: Vec<ContentPart>, raw: &str) -> (String, Vec<RemoveMarker>) {
+        let markers = self.build_remove_marker(&content);
+        let mut new_content = raw.to_string();
+
+        for (marker, _) in markers.iter().rev() {
+            new_content.replace_range(marker.clone(), "");
+        }
+
+        (new_content, markers)
+    }
+
+    pub fn build_remove_marker(&self, contents: &[ContentPart]) -> Vec<RemoveMarker> {
+        contents.iter().fold(vec![], |mut acc, c| {
+            if let parser::ContentPart::Element(el) = c {
+                let marker = if is_skip(&el.start_element) {
+                    None
+                } else {
+                    self.removal_evaluators
+                        .get(el.start_element.name)
+                        .and_then(|evaluator| match evaluator.is_removal(&el.start_element) {
+                            true => create(el, &self.remove_strategies),
+                            false => None,
+                        })
+                        .and_then(|(range, closed_range)| {
+                            if !range.is_empty() {
+                                Some((range, closed_range))
+                            } else {
+                                None
+                            }
+                        })
+                };
+
+                let child_markers = self.build_remove_marker(&el.children);
+
+                if let Some((mut marker, pair)) = marker {
+                    let mut start_cursor = 0;
+                    for (child_marker, _) in &child_markers {
+                        if marker.contains(&child_marker.start)
+                            || marker.contains(&child_marker.end)
+                        {
+                            marker = marker.start.min(child_marker.start)
+                                ..marker.end.max(child_marker.end)
+                        } else {
+                            break;
+                        }
+                        start_cursor += 1;
+                    }
+
+                    if let Some(mut end_marker) = pair {
+                        let mut end_cursor = child_markers.len();
+                        for (child_marker, _) in child_markers.iter().rev() {
+                            if end_marker.contains(&child_marker.start)
+                                || end_marker.contains(&child_marker.end)
+                            {
+                                end_marker = end_marker.start.min(child_marker.start)
+                                    ..end_marker.end.max(child_marker.end)
+                            } else {
+                                break;
+                            }
+                            end_cursor -= 1;
+                        }
+
+                        let current = acc.len();
+                        acc.push((
+                            marker,
+                            Some(current + (end_cursor - start_cursor).max(0) + 1),
+                        ));
+                        if start_cursor < end_cursor {
+                            acc.extend(child_markers[start_cursor..end_cursor].to_owned());
+                        }
+                        acc.push((end_marker, Some(current)));
+                    } else {
+                        acc.push((marker, None));
+                    }
+                } else {
+                    acc.extend(child_markers);
+                }
+            }
+
+            acc
+        })
+    }
 }
 
 pub fn get_removed_pos(markers: &[RemoveMarker]) -> Vec<RemovedMarker> {
@@ -42,87 +125,13 @@ pub fn get_removed_pos(markers: &[RemoveMarker]) -> Vec<RemovedMarker> {
         .0
 }
 
-fn build_remove_marker(
-    contents: &[ContentPart],
-    evaluator_map: &HashMap<&str, Box<dyn RemovalEvaluator>>,
-    remove_strategy_map: &RemoveStrategies,
-) -> Vec<RemoveMarker> {
-    contents.iter().fold(vec![], |mut acc, c| {
-        if let parser::ContentPart::Element(el) = c {
-            let marker = if is_skip(&el.start_element) {
-                None
-            } else {
-                evaluator_map
-                    .get(el.start_element.name)
-                    .and_then(|evaluator| match evaluator.is_removal(&el.start_element) {
-                        true => create(el, remove_strategy_map),
-                        false => None,
-                    })
-                    .and_then(|(range, closed_range)| {
-                        if !range.is_empty() {
-                            Some((range, closed_range))
-                        } else {
-                            None
-                        }
-                    })
-            };
-
-            let child_markers =
-                build_remove_marker(&el.children, evaluator_map, remove_strategy_map);
-
-            if let Some((mut marker, pair)) = marker {
-                let mut start_cursor = 0;
-                for (child_marker, _) in &child_markers {
-                    if marker.contains(&child_marker.start) || marker.contains(&child_marker.end) {
-                        marker =
-                            marker.start.min(child_marker.start)..marker.end.max(child_marker.end)
-                    } else {
-                        break;
-                    }
-                    start_cursor += 1;
-                }
-
-                if let Some(mut end_marker) = pair {
-                    let mut end_cursor = child_markers.len();
-                    for (child_marker, _) in child_markers.iter().rev() {
-                        if end_marker.contains(&child_marker.start)
-                            || end_marker.contains(&child_marker.end)
-                        {
-                            end_marker = end_marker.start.min(child_marker.start)
-                                ..end_marker.end.max(child_marker.end)
-                        } else {
-                            break;
-                        }
-                        end_cursor -= 1;
-                    }
-
-                    let current = acc.len();
-                    acc.push((
-                        marker,
-                        Some(current + (end_cursor - start_cursor).max(0) + 1),
-                    ));
-                    if start_cursor < end_cursor {
-                        acc.extend(child_markers[start_cursor..end_cursor].to_owned());
-                    }
-                    acc.push((end_marker, Some(current)));
-                } else {
-                    acc.push((marker, None));
-                }
-            } else {
-                acc.extend(child_markers);
-            }
-        }
-
-        acc
-    })
-}
-
 fn is_skip(el: &Element) -> bool {
     el.attrs.iter().any(|v| v.name == "skip")
 }
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use std::rc::Rc;
 
     use marker::{
@@ -153,109 +162,93 @@ mod tests {
         ]
     }
 
-    #[test]
-    fn test_remove_marker() {
-        let mut builder_map: HashMap<&str, Box<dyn RemovalEvaluator>> = HashMap::new();
-        builder_map.insert(
-            "tl",
+    fn initialize_removal_evaluators() -> RemovalEvaluators {
+        let mut removal_evaluators: RemovalEvaluators = HashMap::new();
+        removal_evaluators.insert(
+            String::from("tl"),
             Box::new(TimeLimitedEvaluator {
                 current_time: chrono::Local::now(),
                 time_offset: "+00:00".to_string(),
             }),
         );
-        //                    0         1         2         3        4
-        // byte_pos:          012345678901234567890123456789012-5678901234
-        let content = Rc::new("foo<tl to='2000-01-01 00:00:00'>あ</tl>fuga".to_string());
-        let tokens = tokenizer::tokenize(&content, "<", ">");
-        let contents = parser::parse(&tokens);
-        assert_eq!(
-            build_remove_marker(
-                &contents,
-                &builder_map,
-                &initialize_remove_strategy(Rc::clone(&content))
-            ),
-            vec![(3..40, None)]
-        );
 
-        let content = Rc::new("foo<baz>a".to_string());
-        let tokens = tokenizer::tokenize(&content, "<", ">");
-        let contents = parser::parse(&tokens);
-        assert_eq!(
-            build_remove_marker(
-                &contents,
-                &builder_map,
-                &initialize_remove_strategy(Rc::clone(&content))
-            ),
-            vec![]
+        removal_evaluators
+    }
+
+    #[rstest]
+    //      0         1         2         3        4
+    //      012345678901234567890123456789012-5678901234
+    #[case("foo<tl to='2000-01-01 00:00:00'>あ</tl>fuga", vec![(3..40, None)])]
+    #[case("foo<baz>a", vec![])]
+    fn test_remove_marker(#[case] content: &str, #[case] expected: Vec<RemoveMarker>) {
+        let mut removal_evaluators: RemovalEvaluators = HashMap::new();
+        removal_evaluators.insert(
+            String::from("tl"),
+            Box::new(TimeLimitedEvaluator {
+                current_time: chrono::Local::now(),
+                time_offset: "+00:00".to_string(),
+            }),
         );
+        let tokens = tokenizer::tokenize(content, "<", ">");
+        let contents = parser::parse(&tokens);
+        let content = Rc::new(content.to_string());
+        let remover = Remover::new(removal_evaluators, initialize_remove_strategy(content));
+        assert_eq!(remover.build_remove_marker(&contents), expected);
     }
 
     #[test]
     fn test_remove() {
-        let mut builder_map: HashMap<&str, Box<dyn RemovalEvaluator>> = HashMap::new();
-        builder_map.insert(
-            "time-limited",
-            Box::new(TimeLimitedEvaluator {
-                current_time: chrono::Local::now(),
-                time_offset: "+00:00".to_string(),
-            }),
-        );
-        builder_map.insert(
-            "tl",
-            Box::new(TimeLimitedEvaluator {
-                current_time: chrono::Local::now(),
-                time_offset: "+00:00".to_string(),
-            }),
-        );
-
         let content = Rc::new(
             "
 <div>
     hoge
-    <!-- time-limited to='2021-12-31 23:50:00' -->
+    <!-- tl to='2021-12-31 23:50:00' -->
     <h1>Campaign 1</h1>
-    <!-- /time-limited -->
+    <!-- /tl -->
     foo
     bar
     baz
-    <!-- time-limited to='2022-12-31 23:50:00' -->
+    <!-- tl to='2022-12-31 23:50:00' -->
     <h1>Campaign 2</h1>
-    <!-- /time-limited -->
+    <!-- /tl -->
 </div>
 "
             .to_string(),
         );
-        let (removed, markers) = remove(
+        let remover = Remover::new(
+            initialize_removal_evaluators(),
+            initialize_remove_strategy(Rc::clone(&content)),
+        );
+        let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
             &content,
-            &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(
             removed,
             "+<div>+    hoge+    +    foo+    bar+    baz+    +</div>+".replace('+', "\n")
         );
-        assert_eq!(markers, vec![(20..117, None), (146..243, None)]);
+        assert_eq!(markers, vec![(20..97, None), (126..203, None)]);
 
         let content = Rc::new(
             "
 hoge
-<!-- time-limited to='2021-12-31 23:50:00' -->
+<!-- tl to='2021-12-31 23:50:00' -->
 <h1>Campaign 1</h1>
-<!-- /time-limited -->
+<!-- /tl -->
 foo
-<!-- time-limited to='2022-12-31 23:50:00' -->
+<!-- tl to='2022-12-31 23:50:00' -->
 <h1>Campaign 2</h1>
-<!-- /time-limited -->
+<!-- /tl -->
 "
             .to_string(),
         );
-
-        let (removed, markers) = remove(
+        let remover = Remover::new(
+            initialize_removal_evaluators(),
+            initialize_remove_strategy(Rc::clone(&content)),
+        );
+        let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
             &content,
-            &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(
             removed,
@@ -267,44 +260,46 @@ foo
 "
             .to_string()
         );
-        assert_eq!(markers, vec![(6..95, None), (100..189, None),]);
+        assert_eq!(markers, vec![(6..75, None), (80..149, None),]);
 
         let content = Rc::new(
             "
-<!-- time-limited skip to='2021-12-31 23:50:00' -->
+<!-- tl skip to='2021-12-31 23:50:00' -->
 <h1>Campaign 1</h1>
-<!-- /time-limited -->
+<!-- /tl -->
 "
             .to_string(),
         );
-
-        let (removed, _) = remove(
+        let remover = Remover::new(
+            initialize_removal_evaluators(),
+            initialize_remove_strategy(Rc::clone(&content)),
+        );
+        let (removed, _) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
             &content,
-            &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(removed, *content);
 
         let content = Rc::new(
             "
 // --- start ---
-/* time-limited to='2021-12-31 23:50:00' unwrap-block */
+/* tl to='2021-12-31 23:50:00' unwrap-block */
 if (foo) {
     console.log('abc');
     console.log('def');
 }
-/* /time-limited */
+/* /tl */
 // ---  end  ---
 "
             .to_string(),
         );
-
-        let (removed, markers) = remove(
+        let remover = Remover::new(
+            initialize_removal_evaluators(),
+            initialize_remove_strategy(Rc::clone(&content)),
+        );
+        let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "/*", "*/")),
             &content,
-            &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(
             removed,
@@ -318,17 +313,19 @@ if (foo) {
 "
             .to_string()
         );
-        assert_eq!(markers, vec![(18..85, Some(1)), (134..155, Some(0))]);
+        assert_eq!(markers, vec![(18..75, Some(1)), (124..135, Some(0))]);
 
         // byte_pos:           0        10        20        30        40        50        60        70        80        90       100       110       120       130       140
         //                     0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
         //                         <-------------------------------------> <------------------------------------------>           <-----> <------------------------------------->
         let content = Rc::new("foo+<tl to='2021-01-01 00:00:00'>+bar+</tl>+<tl to='2000-01-01 00:00:00' unwrap-block>+{+  s1+  s2+}+</tl>+<tl to='2021-01-01 00:00:00'>+bar+</tl>".replace("+", "\n"));
-        let (removed, markers) = remove(
+        let remover = Remover::new(
+            initialize_removal_evaluators(),
+            initialize_remove_strategy(Rc::clone(&content)),
+        );
+        let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<", ">")),
             &content,
-            &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(removed, "foo+++  s1+  s2++".to_string().replace("+", "\n"));
         assert_eq!(
@@ -345,11 +342,13 @@ if (foo) {
         //                     0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123
         //                         <-------------------------------------> <------------------------------------------>        <----------------------------------------->      <----->
         let content = Rc::new("foo+<tl to='2021-01-01 00:00:00'>+bar+</tl>+<tl to='2000-01-01 00:00:00' unwrap-block>+{+  s1+  <tl to='2021-01-01 00:00:00'>+  bar+  </tl>+  s2+}+</tl>".replace("+", "\n"));
-        let (removed, markers) = remove(
+        let remover = Remover::new(
+            initialize_removal_evaluators(),
+            initialize_remove_strategy(Rc::clone(&content)),
+        );
+        let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<", ">")),
             &content,
-            &builder_map,
-            &initialize_remove_strategy(Rc::clone(&content)),
         );
         assert_eq!(
             removed,
