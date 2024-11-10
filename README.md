@@ -154,7 +154,7 @@ Source code enclosed in `time-limited` tags is removed after the specified time.
 </html>
 ```
 
-### `marker`
+### `removal-marker`
 
 If the command line argument `--removal-marker-target-name` is specified, tags whose name attribute matches the value of the argument are targeted for deletion.
 
@@ -174,12 +174,12 @@ chiritori --filename=./samples/sample-code.js --removal-marker-target-name="feat
 <html>
   <body>
     <h1>Hello World</h1>
-    <!-- <marker name="Feature1"> -->
+    <!-- <removal-marker name="Feature1"> -->
     <p>Feature 1 will be released soon.</p>
-    <!-- </marker> -->
-    <!-- <marker name="Feature2"> -->
+    <!-- </removal-marker> -->
+    <!-- <removal-marker name="Feature2"> -->
     <p>Feature 2 will be released soon.</p>
-    <!-- </marker> -->
+    <!-- </removal-marker> -->
   </body>
 </html>
 ```
