@@ -52,6 +52,10 @@ struct Args {
     /// List source code to be removed
     #[arg(short, long)]
     list: bool,
+
+    /// List source code to be removed
+    #[arg(long, long)]
+    list_all: bool,
 }
 
 fn main() {
@@ -93,6 +97,8 @@ fn main() {
 
     let output = if args.list {
         chiritori::list(content, (args.delimiter_start, args.delimiter_end), config)
+    } else if args.list_all {
+        chiritori::list_all(content, (args.delimiter_start, args.delimiter_end), config)
     } else {
         chiritori::clean(content, (args.delimiter_start, args.delimiter_end), config)
     };

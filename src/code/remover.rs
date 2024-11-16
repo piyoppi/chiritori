@@ -4,7 +4,7 @@ pub mod removal_evaluator;
 use crate::element_parser::Element;
 use crate::parser;
 use crate::parser::ContentPart;
-use marker::factory::{create, RemoveStrategies};
+use marker::factory::{create, RemovableRange, RemoveStrategies};
 use removal_evaluator::RemovalEvaluator;
 use std::collections::HashMap;
 use std::ops::Range;
@@ -46,6 +46,65 @@ impl Remover {
     pub fn build_remove_marker(&self, contents: &[ContentPart]) -> Vec<RemoveMarker> {
         let (ranges, _) = self.collect_removable_ranges(contents, false);
         Self::merge_markers(ranges)
+    }
+
+    pub fn build_remove_marker_all(&self, contents: &[ContentPart]) -> Vec<(RemoveMarker, bool)> {
+        let (ranges, ranges_pending) = self.collect_removable_ranges(contents, true);
+        let ranges = Self::merge_markers(ranges);
+        let ranges_pending = Self::merge_markers(ranges_pending);
+
+        // Merge pending markers
+        //
+        //                  Input Range    |     Output Range
+        // --------------------------------|------------------------
+        // RemoveMarker   x------------x   =>   x------------x
+        // PendingMarker      x---x        |
+        // --------------------------------|------------------------
+        // RemoveMarker       x-----x      =>       x-----x
+        // PendingMarker  x------------x   |    x------------x
+        // ---------------------------------------------------------
+        let mut merged_ranges = Vec::new();
+        let mut range_cursor = 0;
+        for (range, idx) in ranges {
+            let item = {
+                // Pop item from pending_ranges
+                if range_cursor < ranges_pending.len() {
+                    let (pending_range, idx) = &ranges_pending[range_cursor];
+
+                    if pending_range.start < range.end {
+                        range_cursor += 1;
+
+                        let can_squash = range.contains(&pending_range.start)
+                            && range.contains(&pending_range.end);
+                        if can_squash {
+                            None
+                        } else {
+                            Some((pending_range.clone(), *idx))
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
+            if let Some(item) = item {
+                merged_ranges.push((item, false));
+            }
+
+            merged_ranges.push(((range.clone(), idx), true));
+        }
+
+        if range_cursor < ranges_pending.len() {
+            merged_ranges.extend(
+                ranges_pending[range_cursor..ranges_pending.len()]
+                    .iter()
+                    .map(|v| (v.clone(), false)),
+            );
+        }
+
+        merged_ranges
     }
 
     fn collect_removable_ranges(
@@ -184,7 +243,9 @@ mod tests {
             unwrap_block_marker_builder::UnwrapBlockMarkerBuilder,
         },
     };
-    use removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator;
+    use removal_evaluator::{
+        marker_evaluator::MarkerEvaluator, time_limited_evaluator::TimeLimitedEvaluator,
+    };
 
     use super::*;
     use crate::tokenizer;
@@ -234,6 +295,30 @@ mod tests {
         let content = Rc::new(content.to_string());
         let remover = Remover::new(removal_evaluators, initialize_remove_strategy(content));
         assert_eq!(remover.build_remove_marker(&contents), expected);
+    }
+
+    #[rstest]
+    //      0         1         2         3        4
+    //      012345678901234567890123456789012-5678901234
+    #[case("foo<f name='a'>abc</f>fuga", vec![((3..22, None), true)])]
+    #[case("foo<f name='b'>abc</f>fuga", vec![((3..22, None), false)])]
+    #[case("foo<f name='a'>abc</f><f name='b'>abc</f>fuga", vec![((3..22, None), true), ((22..41, None), false)])]
+    #[case("foo<f name='a'>abc<f name='b'>abc</f></f>fuga", vec![((3..41, None), true)])]
+    #[case("foo<f name='b'>abc</f><f name='a'>abc</f>fuga", vec![((3..22, None), false), ((22..41, None), true)])]
+    #[case("foo<baz>a", vec![])]
+    fn test_remove_marker_all(#[case] content: &str, #[case] expected: Vec<(RemoveMarker, bool)>) {
+        let mut removal_evaluators: RemovalEvaluators = HashMap::new();
+        removal_evaluators.insert(
+            String::from("f"),
+            Box::new(MarkerEvaluator {
+                marker_removal_names: [String::from("a")].into(),
+            }),
+        );
+        let tokens = tokenizer::tokenize(content, "<", ">");
+        let contents = parser::parse(&tokens);
+        let content = Rc::new(content.to_string());
+        let remover = Remover::new(removal_evaluators, initialize_remove_strategy(content));
+        assert_eq!(remover.build_remove_marker_all(&contents), expected);
     }
 
     #[test]

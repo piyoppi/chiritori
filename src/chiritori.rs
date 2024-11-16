@@ -73,7 +73,26 @@ pub fn list(
 
     let parsed = parser::parse(&tokens);
     let remover = build_remover(config, content.clone());
-    let (_, markers) = remover.remove(parsed, &content);
+    let markers: Vec<_> = remover
+        .build_remove_marker(&parsed)
+        .into_iter()
+        .map(|v| (v, true))
+        .collect();
+
+    build_list(&content, &markers)
+}
+
+pub fn list_all(
+    content: Rc<String>,
+    delimiters: (String, String),
+    config: ChiritoriConfiguration,
+) -> String {
+    let (delimiter_start, delimiter_end) = delimiters;
+    let tokens = tokenizer::tokenize(&content, &delimiter_start, &delimiter_end);
+
+    let parsed = parser::parse(&tokens);
+    let remover = build_remover(config, content.clone());
+    let markers = remover.build_remove_marker_all(&parsed);
 
     build_list(&content, &markers)
 }
@@ -270,6 +289,70 @@ console.log("Temporary code while feature2 is not released")
         let config = create_test_config();
         let delimiters = (String::from("/* <"), String::from("> */"));
         let result = clean(input_content.into(), delimiters, config);
+
+        assert_eq!(result, expected_content);
+    }
+
+    #[rstest]
+    fn should_list_all_with_js(
+        #[files("src/integration-test-fixtures/*.input.js")] path_input: PathBuf,
+    ) {
+        let mut path_expected = path_input.clone();
+        let mut filename_expected = OsString::from(path_input.file_name().unwrap());
+        filename_expected.push(".list_all.expected");
+        path_expected.set_file_name(filename_expected);
+
+        let mut f_input = File::open(path_input).unwrap();
+        let mut f_expected = File::open(path_expected).unwrap();
+        let mut input_content = String::new();
+        let mut expected_content = String::new();
+
+        f_input
+            .read_to_string(&mut input_content)
+            .expect("Failed to load input a content file");
+        f_expected
+            .read_to_string(&mut expected_content)
+            .expect("Failed to load an expected content file");
+
+        let config = create_test_config();
+        let delimiters = (String::from("/* <"), String::from("> */"));
+        let result = list_all(input_content.into(), delimiters, config)
+            .replace("\x1b[0m", "")
+            .replace("\x1b[31m", "")
+            .replace("\x1b[32m", "")
+            .replace("\x1b[33m", "");
+
+        assert_eq!(result, expected_content);
+    }
+
+    #[rstest]
+    fn should_list_with_js(
+        #[files("src/integration-test-fixtures/*.input.js")] path_input: PathBuf,
+    ) {
+        let mut path_expected = path_input.clone();
+        let mut filename_expected = OsString::from(path_input.file_name().unwrap());
+        filename_expected.push(".list.expected");
+        path_expected.set_file_name(filename_expected);
+
+        let mut f_input = File::open(path_input).unwrap();
+        let mut f_expected = File::open(path_expected).unwrap();
+        let mut input_content = String::new();
+        let mut expected_content = String::new();
+
+        f_input
+            .read_to_string(&mut input_content)
+            .expect("Failed to load input a content file");
+        f_expected
+            .read_to_string(&mut expected_content)
+            .expect("Failed to load an expected content file");
+
+        let config = create_test_config();
+        let delimiters = (String::from("/* <"), String::from("> */"));
+        let result = list(input_content.into(), delimiters, config)
+            .replace("\x1b[0m", "")
+            .replace("\x1b[31m", "")
+            .replace("\x1b[32m", "")
+            .replace("\x1b[33m", "");
 
         assert_eq!(result, expected_content);
     }
