@@ -4,7 +4,7 @@ pub mod removal_evaluator;
 use crate::element_parser::Element;
 use crate::parser;
 use crate::parser::ContentPart;
-use marker::factory::{create, RemoveStrategies};
+use marker::factory::{create, RemovableRange, RemoveStrategies};
 use removal_evaluator::RemovalEvaluator;
 use std::collections::HashMap;
 use std::ops::Range;
@@ -13,6 +13,11 @@ pub type RemoveMarker = (Range<usize>, Option<usize>);
 pub type RemovedMarker = (usize, Option<usize>);
 
 type RemovalEvaluators = HashMap<String, Box<dyn RemovalEvaluator>>;
+
+struct RemovalRangeTree {
+    range: RemovableRange,
+    children: Vec<RemovalRangeTree>,
+}
 
 pub struct Remover {
     removal_evaluators: RemovalEvaluators,
@@ -39,75 +44,169 @@ impl Remover {
     }
 
     pub fn build_remove_marker(&self, contents: &[ContentPart]) -> Vec<RemoveMarker> {
-        contents.iter().fold(vec![], |mut acc, c| {
-            if let parser::ContentPart::Element(el) = c {
-                let marker = if is_skip(&el.start_element) {
-                    None
-                } else {
-                    self.removal_evaluators
-                        .get(el.start_element.name)
-                        .and_then(|evaluator| match evaluator.is_removal(&el.start_element) {
-                            true => create(el, &self.remove_strategies),
-                            false => None,
-                        })
-                        .and_then(|(range, closed_range)| {
-                            if !range.is_empty() {
-                                Some((range, closed_range))
-                            } else {
-                                None
-                            }
-                        })
-                };
+        let (ranges, _) = self.collect_removable_ranges(contents, false);
+        Self::merge_markers(ranges)
+    }
 
-                let child_markers = self.build_remove_marker(&el.children);
+    pub fn build_remove_marker_all(&self, contents: &[ContentPart]) -> Vec<(RemoveMarker, bool)> {
+        let (ranges, ranges_pending) = self.collect_removable_ranges(contents, true);
+        let ranges = Self::merge_markers(ranges);
+        let ranges_pending = Self::merge_markers(ranges_pending);
 
-                if let Some((mut marker, pair)) = marker {
-                    let mut start_cursor = 0;
-                    for (child_marker, _) in &child_markers {
-                        if marker.contains(&child_marker.start)
-                            || marker.contains(&child_marker.end)
-                        {
-                            marker = marker.start.min(child_marker.start)
-                                ..marker.end.max(child_marker.end)
+        // Merge pending markers
+        //
+        //                  Input Range    |     Output Range
+        // --------------------------------|------------------------
+        // RemoveMarker   x------------x   =>   x------------x
+        // PendingMarker      x---x        |
+        // --------------------------------|------------------------
+        // RemoveMarker       x-----x      =>       x-----x
+        // PendingMarker  x------------x   |    x------------x
+        // ---------------------------------------------------------
+        let mut merged_ranges = Vec::new();
+        let mut range_cursor = 0;
+        for (range, idx) in ranges {
+            let item = {
+                // Pop item from pending_ranges
+                if range_cursor < ranges_pending.len() {
+                    let (pending_range, idx) = &ranges_pending[range_cursor];
+
+                    if pending_range.start < range.end {
+                        range_cursor += 1;
+
+                        let can_squash = range.contains(&pending_range.start)
+                            && range.contains(&pending_range.end);
+                        if can_squash {
+                            None
                         } else {
-                            break;
+                            Some((pending_range.clone(), *idx))
                         }
-                        start_cursor += 1;
-                    }
-
-                    if let Some(mut end_marker) = pair {
-                        let mut end_cursor = child_markers.len();
-                        for (child_marker, _) in child_markers.iter().rev() {
-                            if end_marker.contains(&child_marker.start)
-                                || end_marker.contains(&child_marker.end)
-                            {
-                                end_marker = end_marker.start.min(child_marker.start)
-                                    ..end_marker.end.max(child_marker.end)
-                            } else {
-                                break;
-                            }
-                            end_cursor -= 1;
-                        }
-
-                        let current = acc.len();
-                        acc.push((
-                            marker,
-                            Some(current + (end_cursor - start_cursor).max(0) + 1),
-                        ));
-                        if start_cursor < end_cursor {
-                            acc.extend(child_markers[start_cursor..end_cursor].to_owned());
-                        }
-                        acc.push((end_marker, Some(current)));
                     } else {
-                        acc.push((marker, None));
+                        None
                     }
                 } else {
-                    acc.extend(child_markers);
+                    None
                 }
+            };
+
+            if let Some(item) = item {
+                merged_ranges.push((item, false));
+            }
+
+            merged_ranges.push(((range.clone(), idx), true));
+        }
+
+        if range_cursor < ranges_pending.len() {
+            merged_ranges.extend(
+                ranges_pending[range_cursor..ranges_pending.len()]
+                    .iter()
+                    .map(|v| (v.clone(), false)),
+            );
+        }
+
+        merged_ranges
+    }
+
+    fn collect_removable_ranges(
+        &self,
+        contents: &[ContentPart],
+        collect_pending_removals: bool,
+    ) -> (Vec<RemovalRangeTree>, Vec<RemovalRangeTree>) {
+        contents.iter().fold(
+            (vec![], vec![]),
+            |(mut removal_tree, mut pending_removal_tree), c| {
+                if let parser::ContentPart::Element(el) = c {
+                    let range = if is_skip(&el.start_element) {
+                        None
+                    } else {
+                        self.removal_evaluators
+                            .get(el.start_element.name)
+                            .and_then(|evaluator| match evaluator.is_removal(&el.start_element) {
+                                true => create(el, &self.remove_strategies).map(|f| (f, true)),
+                                false => {
+                                    if collect_pending_removals {
+                                        create(el, &self.remove_strategies).map(|f| (f, false))
+                                    } else {
+                                        None
+                                    }
+                                }
+                            })
+                            .and_then(|((range, closed_range), is_removal)| {
+                                if !range.is_empty() {
+                                    Some(((range, closed_range), is_removal))
+                                } else {
+                                    None
+                                }
+                            })
+                    };
+
+                    let (children, pending_removal_children) =
+                        self.collect_removable_ranges(&el.children, collect_pending_removals);
+
+                    if let Some((range, true)) = range {
+                        removal_tree.push(RemovalRangeTree { range, children });
+                        pending_removal_tree.extend(pending_removal_children);
+                    } else if let Some((range, false)) = range {
+                        removal_tree.extend(children);
+                        pending_removal_tree.push(RemovalRangeTree {
+                            range,
+                            children: pending_removal_children,
+                        });
+                    } else {
+                        removal_tree.extend(children);
+                        pending_removal_tree.extend(pending_removal_children);
+                    }
+                }
+
+                (removal_tree, pending_removal_tree)
+            },
+        )
+    }
+
+    fn merge_markers(ranges: Vec<RemovalRangeTree>) -> Vec<RemoveMarker> {
+        ranges.into_iter().fold(vec![], |mut acc, tree| {
+            let child_markers = Self::merge_markers(tree.children);
+            let (mut marker, pair) = tree.range;
+
+            let start_cursor = Self::merge_child_markers(child_markers.iter(), &mut marker);
+
+            if let Some(mut end_marker) = pair {
+                let end_cursor = child_markers.len()
+                    - Self::merge_child_markers(child_markers.iter().rev(), &mut end_marker);
+
+                let current = acc.len();
+                acc.push((
+                    marker,
+                    Some(current + (end_cursor - start_cursor).max(0) + 1),
+                ));
+                if start_cursor < end_cursor {
+                    acc.extend(child_markers[start_cursor..end_cursor].to_owned());
+                }
+                acc.push((end_marker, Some(current)));
+            } else {
+                acc.push((marker, None));
             }
 
             acc
         })
+    }
+
+    fn merge_child_markers<'a, T>(child_markers: T, marker: &mut Range<usize>) -> usize
+    where
+        T: Iterator<Item = &'a RemoveMarker>,
+    {
+        let mut cursor = 0;
+        for (child_marker, _) in child_markers {
+            if marker.contains(&child_marker.start) || marker.contains(&child_marker.end) {
+                marker.start = marker.start.min(child_marker.start);
+                marker.end = marker.end.max(child_marker.end);
+            } else {
+                break;
+            }
+            cursor += 1;
+        }
+
+        cursor
     }
 }
 
@@ -144,7 +243,9 @@ mod tests {
             unwrap_block_marker_builder::UnwrapBlockMarkerBuilder,
         },
     };
-    use removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator;
+    use removal_evaluator::{
+        marker_evaluator::MarkerEvaluator, time_limited_evaluator::TimeLimitedEvaluator,
+    };
 
     use super::*;
     use crate::tokenizer;
@@ -194,6 +295,30 @@ mod tests {
         let content = Rc::new(content.to_string());
         let remover = Remover::new(removal_evaluators, initialize_remove_strategy(content));
         assert_eq!(remover.build_remove_marker(&contents), expected);
+    }
+
+    #[rstest]
+    //      0         1         2         3        4
+    //      012345678901234567890123456789012-5678901234
+    #[case("foo<f name='a'>abc</f>fuga", vec![((3..22, None), true)])]
+    #[case("foo<f name='b'>abc</f>fuga", vec![((3..22, None), false)])]
+    #[case("foo<f name='a'>abc</f><f name='b'>abc</f>fuga", vec![((3..22, None), true), ((22..41, None), false)])]
+    #[case("foo<f name='a'>abc<f name='b'>abc</f></f>fuga", vec![((3..41, None), true)])]
+    #[case("foo<f name='b'>abc</f><f name='a'>abc</f>fuga", vec![((3..22, None), false), ((22..41, None), true)])]
+    #[case("foo<baz>a", vec![])]
+    fn test_remove_marker_all(#[case] content: &str, #[case] expected: Vec<(RemoveMarker, bool)>) {
+        let mut removal_evaluators: RemovalEvaluators = HashMap::new();
+        removal_evaluators.insert(
+            String::from("f"),
+            Box::new(MarkerEvaluator {
+                marker_removal_names: [String::from("a")].into(),
+            }),
+        );
+        let tokens = tokenizer::tokenize(content, "<", ">");
+        let contents = parser::parse(&tokens);
+        let content = Rc::new(content.to_string());
+        let remover = Remover::new(removal_evaluators, initialize_remove_strategy(content));
+        assert_eq!(remover.build_remove_marker_all(&contents), expected);
     }
 
     #[test]

@@ -1,76 +1,83 @@
-async function main() {
-  console.log('Hello, World! 1 [0]');
+
+-------- [ 1 ]  Ready  --------
+  _start
   /* < time-limited to="2020-12-31 23:59:59" > */
     console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [1]');
   /* < /time-limited > */
-
+                        ‾end
+-------- [ 2 ] Pending --------
+  _start
   /* < time-limited to="2099-12-31 23:59:59" > */
     console.log('📌This code will be removed after 2099-12-31T23:59:59.999Z [2]');
   /* < /time-limited > */
-
+                        ‾end
+-------- [ 3 ]  Ready  --------
+  _start
   /* < time-limited to="2020-12-31 23:59:59" > */
     console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [3]');
   /* < /time-limited > */
-
-  /* =============== Nested tags =============== */
-
+                        ‾end
+-------- [ 4 ]  Ready  --------
+  _start
   /* < time-limited to="2020-12-31 23:59:59" > */
     console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [4]');
     /* < time-limited to="2099-12-31 23:59:59" > */
       console.log('📌This code will be removed after 2099-12-31T23:59:59.999Z [5]');
     /* < /time-limited > */
   /* < /time-limited > */
-
+                        ‾end
+-------- [ 5 ] Pending --------
+  _start
   /* < time-limited to="2099-12-31 23:59:59" > */
     console.log('📌This code will be removed after 2099-12-31T23:59:59.999Z [6]');
     /* < time-limited to="2020-12-31 23:59:59" > */
       console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [7]');
     /* < /time-limited > */
   /* < /time-limited > */
-
-  const isReleased = await fetch('https://example.test/features/awesome-feature')
-
-  /* =============== Unwrap Block =============== */
-
+                        ‾end
+-------- [ 6 ]  Ready  --------
+    _start
+    /* < time-limited to="2020-12-31 23:59:59" > */
+      console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [7]');
+    /* < /time-limited > */
+                          ‾end
+-------- [ 7 ]  Ready  --------
+  _start
   /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
   if (isReleased) {
-    console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z [8]');
-    const awesomeFeature = new awesomeFeature()
-    awesomeFeature.run();
+                  ‾end
+-------- [ 8 ]  Ready  --------
+_start
   }
   /* < /time-limited > */
-
-  for (let i = 0; i < 10; i++) {
+                        ‾end
+-------- [ 9 ]  Ready  --------
+    _start
     /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
     if (isReleased) {
-      console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z [9]');
-      awesomeFeature.add(i);
+                    ‾end
+-------- [ 10 ]  Ready  --------
+_start
     }
     /* < /time-limited > */
-  }
-
+                          ‾end
+-------- [ 11 ]  Ready  --------
+_start
 /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
   if (isReleased) {
-    console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z [10]');
+                  ‾end
+-------- [ 12 ]  Ready  --------
+_start
   }
 /* < /time-limited > */
-
-  /* unwrap-block requires a removal target immediately after the start tag and immediately before the end tag. */
-  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
-  /* < /time-limited > */
-  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
-  foo()
-  /* < /time-limited > */
-
-  /* If the indentation of the marker is greater than the indentation of the block, it cannot be removed. */
+                      ‾end
+-------- [ 13 ]  Ready  --------
+        _start
         /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
   if (isReleased) {
-    console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z [11]');
+                  ‾end
+-------- [ 14 ]  Ready  --------
+_start
   }
         /* < /time-limited > */
-
-  /* unwrap-block requires a line break immediately after the start tag and immediately before the end tag. */
-  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */ foo() /* < /time-limited > */
-  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > *//* < /time-limited > */
-  console.log('Hello, World! 2 [12]');
-}
+                              ‾end

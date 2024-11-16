@@ -1,0 +1,68 @@
+
+-------- [ 1 ]  Ready  --------
+  _start
+  /* < time-limited to="2020-12-31 23:59:59" > */
+    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [1]');
+  /* < /time-limited > */
+                        ‾end
+-------- [ 2 ]  Ready  --------
+  _start
+  /* < time-limited to="2020-12-31 23:59:59" > */
+    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [3]');
+  /* < /time-limited > */
+                        ‾end
+-------- [ 3 ]  Ready  --------
+  _start
+  /* < time-limited to="2020-12-31 23:59:59" > */
+    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [4]');
+    /* < time-limited to="2099-12-31 23:59:59" > */
+      console.log('📌This code will be removed after 2099-12-31T23:59:59.999Z [5]');
+    /* < /time-limited > */
+  /* < /time-limited > */
+                        ‾end
+-------- [ 4 ]  Ready  --------
+    _start
+    /* < time-limited to="2020-12-31 23:59:59" > */
+      console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [7]');
+    /* < /time-limited > */
+                          ‾end
+-------- [ 5 ]  Ready  --------
+  _start
+  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+  if (isReleased) {
+                  ‾end
+-------- [ 6 ]  Ready  --------
+_start
+  }
+  /* < /time-limited > */
+                        ‾end
+-------- [ 7 ]  Ready  --------
+    _start
+    /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+    if (isReleased) {
+                    ‾end
+-------- [ 8 ]  Ready  --------
+_start
+    }
+    /* < /time-limited > */
+                          ‾end
+-------- [ 9 ]  Ready  --------
+_start
+/* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+  if (isReleased) {
+                  ‾end
+-------- [ 10 ]  Ready  --------
+_start
+  }
+/* < /time-limited > */
+                      ‾end
+-------- [ 11 ]  Ready  --------
+        _start
+        /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+  if (isReleased) {
+                  ‾end
+-------- [ 12 ]  Ready  --------
+_start
+  }
+        /* < /time-limited > */
+                              ‾end
