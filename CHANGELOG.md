@@ -1,5 +1,11 @@
 # Chiritori Changelog
 
+## 1.2.0
+
+### Features
+
+- Add `--list-all` Option: The feature of displaying a list of source code to be removed or pending.
+
 ## 1.1.0
 
 ### Features
