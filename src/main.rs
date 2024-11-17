@@ -53,7 +53,7 @@ struct Args {
     #[arg(short, long)]
     list: bool,
 
-    /// List source code to be removed
+    /// List source code to be removed or pending
     #[arg(long, long)]
     list_all: bool,
 }

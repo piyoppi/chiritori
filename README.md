@@ -88,6 +88,8 @@ Options:
           Name of removal-marker to be removed [default: vec![]]
   -l, --list
           List source code to be removed
+      --list-all
+          List source code to be removed or pending
   -h, --help
           Print help
   -V, --version
