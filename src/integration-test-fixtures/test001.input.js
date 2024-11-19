@@ -73,4 +73,20 @@ async function main() {
   /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */ foo() /* < /time-limited > */
   /* < time-limited to="2020-12-31 23:59:59" unwrap-block > *//* < /time-limited > */
   console.log('Hello, World! 2 [12]');
+
+  /* =============== comment attribute =============== */
+
+  /* < time-limited to="2001-12-31 23:59:59"
+   * c="You can write your comments here."
+   * > */
+    console.log('[13]');
+  /* < /time-limited > */
+
+  /* < time-limited to="2020-12-31 23:59:59" unwrap-block
+   * c="You can write your comments here."
+   * > */
+  if (isReleased) {
+    console.log('[14]');
+  }
+  /* < /time-limited > */
 }

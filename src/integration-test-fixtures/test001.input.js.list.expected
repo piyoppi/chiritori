@@ -66,3 +66,23 @@ _start
   }
         /* < /time-limited > */
                               ‾end
+-------- [ 13 ]  Ready  --------
+  _start
+  /* < time-limited to="2001-12-31 23:59:59"
+   * c="You can write your comments here."
+   * > */
+    console.log('[13]');
+  /* < /time-limited > */
+                        ‾end
+-------- [ 14 ]  Ready  --------
+  _start
+  /* < time-limited to="2020-12-31 23:59:59" unwrap-block
+   * c="You can write your comments here."
+   * > */
+  if (isReleased) {
+                  ‾end
+-------- [ 15 ]  Ready  --------
+_start
+  }
+  /* < /time-limited > */
+                        ‾end

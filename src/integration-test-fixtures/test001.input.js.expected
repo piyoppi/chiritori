@@ -40,4 +40,8 @@ console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59
   /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */ foo() /* < /time-limited > */
   /* < time-limited to="2020-12-31 23:59:59" unwrap-block > *//* < /time-limited > */
   console.log('Hello, World! 2 [12]');
+
+  /* =============== comment attribute =============== */
+
+  console.log('[14]');
 }
