@@ -47,7 +47,7 @@ pub fn parse<'a>(token: &'a tokenizer::Token) -> Option<Element<'a>> {
                                 }
                             },
                             State::Name(start) => match current_char {
-                                ' ' => {
+                                ' ' | '\n' => {
                                     pairs.push((&target[start..pos], None));
                                     state = State::NameEnd;
                                 }
@@ -261,6 +261,18 @@ mod tests {
                         value: Some("456")
                     }
                 ],
+            })
+        );
+
+        let tokens = tokenizer::tokenize("<foo bar\n>", "<", ">");
+        assert_eq!(
+            parse(&tokens[0]),
+            Some(Element {
+                name: "foo",
+                attrs: vec![Attribute {
+                    name: "bar",
+                    value: None
+                }],
             })
         );
     }
