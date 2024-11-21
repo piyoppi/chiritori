@@ -117,6 +117,16 @@ Removal source code
 <!-- </tag-name> -->
 ```
 
+The `"c"` attribute is a reserved word for inline comments. You can write any comment to the value of the `"c"`  attribute.
+
+```html
+/* < time-limited to="2001-01-03 23:59:59"
+ * c="New Year's greetings are displayed until 3 January."
+ * > */
+<h1>Heppy New Year!</h1>
+/* < /time-limited > */
+```
+
 ### Delimiter Settings
 
 The delimiter for representing an element can be changed via command line arguments.
