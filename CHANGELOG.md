@@ -1,5 +1,11 @@
 # Chiritori Changelog
 
+## 1.2.1
+
+### Bug fixes
+
+- Fixes an error failing to parse if there is a newline after an attribute (https://github.com/piyoppi/chiritori/pull/26)
+
 ## 1.2.0
 
 ### Features
