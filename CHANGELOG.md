@@ -1,5 +1,11 @@
 # Chiritori Changelog
 
+## 1.3.0
+
+### Features
+
+Add `--removal-marker-target-config` option. See [README](https://github.com/piyoppi/chiritori/blob/v1.3.0/README.md#removal-marker).
+
 ## 1.2.1
 
 ### Bug fixes
