@@ -86,6 +86,8 @@ Options:
           The tag name for removal-marker [default: removal-marker]
       --removal-marker-target-name <REMOVAL_MARKER_TARGET_NAME>
           Name of removal-marker to be removed [default: vec![]]
+      --removal-marker-target-config <REMOVAL_MARKER_TARGET_CONFIG>
+          Config file specifying the name of the removal-marker to be removed. The content of the config file is indicated by the name of the removal target, separated by a newline
   -l, --list
           List source code to be removed
       --list-all
@@ -172,6 +174,26 @@ If the command line argument `--removal-marker-target-name` is specified, tags w
 
 ```
 chiritori --filename=./samples/sample-code.js --removal-marker-target-name="feature1"
+```
+
+Removal targets can also be specified using a configuration file.
+
+```
+chiritori --filename=./samples/sample-code.js --removal-marker-target-config=./config.txt
+```
+
+The configuration file specifies the target for each new line.
+If the contents of config.txt are as follows.
+
+```
+feature1
+feature2
+```
+
+It is equivalent to the following commands.
+
+```
+chiritori --filename=./samples/sample-code.js --removal-marker-target-name="feature1" --removal-marker-target-name="feature2"
 ```
 
 #### Attributes
