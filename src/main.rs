@@ -2,7 +2,7 @@ use chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfi
 use clap::Parser;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::{prelude::*, BufReader};
 use std::rc::Rc;
 mod chiritori;
 mod code;
@@ -49,6 +49,11 @@ struct Args {
     #[arg(long, default_value = "vec![]")]
     removal_marker_target_name: Vec<String>,
 
+    /// Config file specifying the name of the removal-marker to be removed.
+    /// The content of the config file is indicated by the name of the removal target, separated by a newline.
+    #[arg(long)]
+    removal_marker_target_config: Option<String>,
+
     /// List source code to be removed
     #[arg(short, long)]
     list: bool,
@@ -77,8 +82,17 @@ fn main() {
             .expect("something went wrong reading the file");
     }
 
-    let content = Rc::new(content);
-    let marker_removal_tags = HashSet::from_iter(args.removal_marker_target_name);
+    let removal_marker_target_names_from_file =
+        if let Some(removal_marker_target_config) = args.removal_marker_target_config {
+            load_removal_marker_target_names(removal_marker_target_config)
+        } else {
+            vec![]
+        };
+
+    let marker_removal_tags: HashSet<_> = removal_marker_target_names_from_file
+        .into_iter()
+        .chain(args.removal_marker_target_name)
+        .collect();
 
     let config = ChiritoriConfiguration {
         time_limited_configuration: TimeLimitedConfiguration {
@@ -95,6 +109,8 @@ fn main() {
         },
     };
 
+    let content = Rc::new(content);
+
     let output = if args.list {
         chiritori::list(content, (args.delimiter_start, args.delimiter_end), config)
     } else if args.list_all {
@@ -110,4 +126,11 @@ fn main() {
     } else {
         print!("{}", output);
     }
+}
+
+fn load_removal_marker_target_names(filename: String) -> Vec<String> {
+    let f = File::open(filename).expect("file not found");
+    let reader = BufReader::new(f);
+
+    reader.lines().map_while(Result::ok).collect::<Vec<_>>()
 }
