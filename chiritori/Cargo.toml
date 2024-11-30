@@ -1,5 +1,5 @@
 [package]
-name = "lib-chiritori"
+name = "chiritori"
 version = "1.3.0"
 description = "A tool for removing time-limited source code"
 repository = "https://github.com/piyoppi/chiritori"
@@ -8,8 +8,7 @@ authors = ["piyoppi"]
 edition = "2021"
 
 [dependencies]
+atty = "0.2"
 chrono = "0.4.34"
 clap = { version = "4.5.1", features = ["derive"] }
-
-[dev-dependencies]
-rstest = "0.23.0"
+lib-chiritori = { path = "../lib-chiritori" }
