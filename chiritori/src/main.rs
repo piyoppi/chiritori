@@ -1,14 +1,10 @@
-use chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfiguration};
+extern crate lib_chiritori;
+use lib_chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfiguration};
 use clap::Parser;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::rc::Rc;
-mod chiritori;
-mod code;
-mod element_parser;
-mod parser;
-mod tokenizer;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
