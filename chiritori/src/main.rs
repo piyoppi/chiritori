@@ -1,5 +1,5 @@
 extern crate lib_chiritori;
-use lib_chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfiguration};
+use lib_chiritori::chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfiguration};
 use clap::Parser;
 use std::collections::HashSet;
 use std::fs::File;
@@ -108,11 +108,11 @@ fn main() {
     let content = Rc::new(content);
 
     let output = if args.list {
-        chiritori::list(content, (args.delimiter_start, args.delimiter_end), config)
+        lib_chiritori::chiritori::list(content, (args.delimiter_start, args.delimiter_end), config)
     } else if args.list_all {
-        chiritori::list_all(content, (args.delimiter_start, args.delimiter_end), config)
+        lib_chiritori::chiritori::list_all(content, (args.delimiter_start, args.delimiter_end), config)
     } else {
-        chiritori::clean(content, (args.delimiter_start, args.delimiter_end), config)
+        lib_chiritori::chiritori::clean(content, (args.delimiter_start, args.delimiter_end), config)
     };
 
     if let Some(filename) = args.output {
