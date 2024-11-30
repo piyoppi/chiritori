@@ -13,6 +13,8 @@ impl BlockFormatter for BlockIndentRemover {
     /// # Examples
     ///
     /// ```
+    /// use crate::lib_chiritori::code::formatter::BlockFormatter;
+    /// let remover = lib_chiritori::code::formatter::block_indent_remover::BlockIndentRemover {};
     /// //         input                output            removed
     /// //  +----------------+    +----------------+    +---------+
     /// //  |  f o o +       |    |  f o o +       |    | foo+    |
