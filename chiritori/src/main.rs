@@ -1,6 +1,8 @@
 extern crate lib_chiritori;
-use lib_chiritori::chiritori::{ChiritoriConfiguration, RemovalMarkerConfiguration, TimeLimitedConfiguration};
 use clap::Parser;
+use lib_chiritori::chiritori::{
+    ChiritoriConfiguration, RemovalMarkerConfiguration, TimeLimitedConfiguration,
+};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
@@ -110,7 +112,11 @@ fn main() {
     let output = if args.list {
         lib_chiritori::chiritori::list(content, (args.delimiter_start, args.delimiter_end), config)
     } else if args.list_all {
-        lib_chiritori::chiritori::list_all(content, (args.delimiter_start, args.delimiter_end), config)
+        lib_chiritori::chiritori::list_all(
+            content,
+            (args.delimiter_start, args.delimiter_end),
+            config,
+        )
     } else {
         lib_chiritori::chiritori::clean(content, (args.delimiter_start, args.delimiter_end), config)
     };
