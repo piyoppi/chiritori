@@ -85,17 +85,17 @@ fn tree<'a, 'b, 'c, 'd>(
 
                     if let Some((end_token, end_el)) = end_part {
                         if el.name == end_el.name.trim_start_matches("/") {
-                            return State::Content(vec![ContentPart::Element(Element {
+                            State::Content(vec![ContentPart::Element(Element {
                                 start_element: el,
                                 start_token: t,
                                 end_token,
                                 children,
-                            })]);
+                            })])
                         } else {
                             let mut parts = vec![ContentPart::Text(Text { token: t })];
                             parts.extend(children);
 
-                            return State::Hoisted((parts, end_token, end_el));
+                            State::Hoisted((parts, end_token, end_el))
                         }
                     } else {
                         let mut parts = vec![ContentPart::Text(Text { token: t })];
