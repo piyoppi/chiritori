@@ -3,4 +3,6 @@
 members = [
   "lib-chiritori",
   "chiritori",
+  "wasm-chiritori",
 ]
+resolver = "2"
