@@ -12,6 +12,8 @@ impl Formatter for NextLineBreakRemover {
     /// # Examples
     ///
     /// ```
+    /// use crate::chiritori::code::formatter::Formatter;
+    /// let remover = chiritori::code::formatter::next_line_break_remover::NextLineBreakRemover {};
     /// //           input                     output             removed
     /// //  +--------------------+    +--------------------+    +---------+
     /// //  |  f o o +           |    |  f o o +           |    | foo+    |
@@ -25,7 +27,7 @@ impl Formatter for NextLineBreakRemover {
     /// //             |     -----
     /// //             |     Removal an empty line
     /// let content = "foo+    +  +    bar".replace('+', "\n");
-    /// assert_eq!(remover.format(&content, 7, 0), (7, 11));
+    /// assert_eq!(remover.format(&content, 7), (7, 11));
     /// ```
     fn format(&self, content: &str, byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();

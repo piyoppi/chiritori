@@ -15,6 +15,8 @@ impl Formatter for EmptyLineRemover {
     /// # Examples
     ///
     /// ```
+    /// use crate::chiritori::code::formatter::Formatter;
+    /// let remover = chiritori::code::formatter::empty_line_remover::EmptyLineRemover {};
     /// //           input                      output               removed
     /// //  +---------------------+    +---------------------+    +-----------+
     /// //  |  . . . . h o g e +  |    |  . . . . h o g e +  |    | ....hoge+ |
@@ -27,7 +29,7 @@ impl Formatter for EmptyLineRemover {
     /// //             |        -
     /// //             |        Removal line break
     /// let content = "    hoge++  foo".replace('+', "\n");
-    /// assert_eq!(remover.format(&content, 9, 0), (9, 10));
+    /// assert_eq!(remover.format(&content, 9), (9, 10));
     ///
     /// //           input           removed (No changed)
     /// //  +---------------------+    +-----------+
@@ -40,7 +42,7 @@ impl Formatter for EmptyLineRemover {
     /// //                      10        20
     /// //         pos 01234567890123456789012
     /// let content = "    hoge+++  foo".replace('+', "\n");
-    /// assert_eq!(remover.format(&content, 9, 0), (9, 9));
+    /// assert_eq!(remover.format(&content, 9), (9, 9));
     /// ```
     fn format(&self, content: &str, byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();
