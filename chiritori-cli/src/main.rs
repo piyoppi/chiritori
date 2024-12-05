@@ -1,5 +1,8 @@
 extern crate chiritori;
-use chiritori::chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfiguration, list, list_all, clean};
+use chiritori::chiritori::{
+    clean, list, list_all, ChiritoriConfiguration, RemovalMarkerConfiguration,
+    TimeLimitedConfiguration,
+};
 use clap::Parser;
 use std::collections::HashSet;
 use std::fs::File;
@@ -99,9 +102,9 @@ fn main() {
                 .parse::<chrono::DateTime<chrono::Local>>()
                 .unwrap_or(chrono::Local::now()),
         },
-        marker_tag_configuration: MarkerTagConfiguration {
+        removal_marker_configuration: RemovalMarkerConfiguration {
             tag_name: args.removal_marker_tag_name,
-            marker_removal_tags,
+            targets: marker_removal_tags,
         },
     };
 
