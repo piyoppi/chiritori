@@ -3,5 +3,6 @@
 members = [
   "chiritori",
   "chiritori-cli",
+  "chiritori-wasm",
 ]
 resolver = "2"
