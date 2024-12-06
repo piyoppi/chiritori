@@ -7,6 +7,8 @@ impl Formatter for IndentRemover {
     /// # Examples
     ///
     /// ```
+    /// use crate::chiritori::code::formatter::Formatter;
+    /// let remover = chiritori::code::formatter::indent_remover::IndentRemover {};
     /// //           input                      output               removed
     /// //  +---------------------+    +---------------------+    +-----------+
     /// //  |  f o o +            |    |  f o o +            |    | foo+      |
@@ -20,7 +22,7 @@ impl Formatter for IndentRemover {
     /// //             |   ----
     /// //             |   Removal spaces
     /// let content = "foo+    +    +    bar".replace('+', "\n");
-    /// assert_eq!(remover.format(&content, 8, 0), (4, 8));
+    /// assert_eq!(remover.format(&content, 8), (4, 8));
     /// ```
     fn format(&self, content: &str, byte_pos: usize) -> (usize, usize) {
         let mut cursor = byte_pos;

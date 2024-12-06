@@ -1,14 +1,13 @@
-use chiritori::{ChiritoriConfiguration, MarkerTagConfiguration, TimeLimitedConfiguration};
+extern crate chiritori;
+use chiritori::chiritori::{
+    clean, list, list_all, ChiritoriConfiguration, RemovalMarkerConfiguration,
+    TimeLimitedConfiguration,
+};
 use clap::Parser;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::rc::Rc;
-mod chiritori;
-mod code;
-mod element_parser;
-mod parser;
-mod tokenizer;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -103,20 +102,20 @@ fn main() {
                 .parse::<chrono::DateTime<chrono::Local>>()
                 .unwrap_or(chrono::Local::now()),
         },
-        marker_tag_configuration: MarkerTagConfiguration {
+        removal_marker_configuration: RemovalMarkerConfiguration {
             tag_name: args.removal_marker_tag_name,
-            marker_removal_tags,
+            targets: marker_removal_tags,
         },
     };
 
     let content = Rc::new(content);
 
     let output = if args.list {
-        chiritori::list(content, (args.delimiter_start, args.delimiter_end), config)
+        list(content, (args.delimiter_start, args.delimiter_end), config)
     } else if args.list_all {
-        chiritori::list_all(content, (args.delimiter_start, args.delimiter_end), config)
+        list_all(content, (args.delimiter_start, args.delimiter_end), config)
     } else {
-        chiritori::clean(content, (args.delimiter_start, args.delimiter_end), config)
+        clean(content, (args.delimiter_start, args.delimiter_end), config)
     };
 
     if let Some(filename) = args.output {

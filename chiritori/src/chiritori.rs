@@ -28,7 +28,7 @@ use std::{
 
 pub struct ChiritoriConfiguration {
     pub time_limited_configuration: TimeLimitedConfiguration,
-    pub marker_tag_configuration: MarkerTagConfiguration,
+    pub removal_marker_configuration: RemovalMarkerConfiguration,
 }
 
 pub struct TimeLimitedConfiguration {
@@ -37,9 +37,9 @@ pub struct TimeLimitedConfiguration {
     pub current: chrono::DateTime<chrono::Local>,
 }
 
-pub struct MarkerTagConfiguration {
+pub struct RemovalMarkerConfiguration {
     pub tag_name: String,
-    pub marker_removal_tags: HashSet<String>,
+    pub targets: HashSet<String>,
 }
 
 pub fn clean(
@@ -110,10 +110,10 @@ fn build_remover(config: ChiritoriConfiguration, content: Rc<String>) -> Remover
     );
 
     builder_map.insert(
-        config.marker_tag_configuration.tag_name,
+        config.removal_marker_configuration.tag_name,
         Box::new(
             remover::removal_evaluator::marker_evaluator::MarkerEvaluator {
-                marker_removal_names: config.marker_tag_configuration.marker_removal_tags,
+                marker_removal_names: config.removal_marker_configuration.targets,
             },
         ),
     );
@@ -157,9 +157,9 @@ mod tests {
                 current: Local::now(),
                 time_offset: String::from("+00:00"),
             },
-            marker_tag_configuration: MarkerTagConfiguration {
+            removal_marker_configuration: RemovalMarkerConfiguration {
                 tag_name: String::from("marker"),
-                marker_removal_tags: HashSet::from([String::from("feature1")]),
+                targets: HashSet::from([String::from("feature1")]),
             },
         }
     }

@@ -13,6 +13,8 @@ impl Formatter for PrevLineBreakRemover {
     /// # Examples
     ///
     /// ```
+    /// use crate::chiritori::code::formatter::Formatter;
+    /// let remover = chiritori::code::formatter::prev_line_break_remover::PrevLineBreakRemover {};
     /// //           input               output           removed
     /// //  +----------------+    +----------------+    +---------+
     /// //  |  . . h o g e + |    |  . . h o g e + |    | ..hoge+ |
@@ -26,7 +28,7 @@ impl Formatter for PrevLineBreakRemover {
     /// //             |      ------
     /// //             |      Removal an empty line
     /// let content = "  hoge+ +    +    foo".replace('+', "\n");
-    /// assert_eq!(remover.format(&content, 12, 0), (7, 12));
+    /// assert_eq!(remover.format(&content, 12), (7, 12));
     /// ```
     fn format(&self, content: &str, byte_pos: usize) -> (usize, usize) {
         let bytes = content.as_bytes();

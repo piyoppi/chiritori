@@ -13,6 +13,8 @@ impl BlockFormatter for BlockIndentRemover {
     /// # Examples
     ///
     /// ```
+    /// use crate::chiritori::code::formatter::BlockFormatter;
+    /// let remover = chiritori::code::formatter::block_indent_remover::BlockIndentRemover {};
     /// //         input                output            removed
     /// //  +----------------+    +----------------+    +---------+
     /// //  |  f o o +       |    |  f o o +       |    | foo+    |
@@ -48,11 +50,7 @@ impl BlockFormatter for BlockIndentRemover {
         };
         let mut current_pos = start_byte_pos + 1;
         let first_indent_len = get_indent_len(content, current_pos);
-        let indent_len = if first_indent_len > indent_ofs {
-            first_indent_len - indent_ofs
-        } else {
-            0
-        };
+        let indent_len = first_indent_len.saturating_sub(indent_ofs);
 
         let mut positions = vec![];
         while end_byte_pos > current_pos {
