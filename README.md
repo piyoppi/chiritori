@@ -21,13 +21,16 @@ The application can pre-tag source code (e.g. using comments) and remove them wh
 
 We also provide [actions-chiritori](https://github.com/piyoppi/actions-chiritori), available on GitHub Actions.
 
+## Demo
+
+You can try Chiritori in your browser. https://piyoppi.github.io/chiritori-web/
+
 ## Install
 
 ### Homebrew
 
 ```
-$ brew tap piyoppi/tap
-$ brew install chiritori
+$ brew install piyoppi/tap/chiritori
 ```
 
 ### Manually
