@@ -3,6 +3,10 @@
 members = [
   "chiritori",
   "chiritori-cli",
-  "chiritori-wasm",
 ]
+
+exclude = [
+  "chiritori-wasm"
+]
+
 resolver = "2"

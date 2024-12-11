@@ -7,6 +7,9 @@ license = "MIT"
 authors = ["piyoppi"]
 edition = "2021"
 
+[package.metadata.release]
+release = false
+
 [dependencies]
 chrono = "0.4.34"
 

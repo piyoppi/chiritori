@@ -3,6 +3,9 @@ name = "chiritori-wasm"
 version = "0.1.0"
 edition = "2021"
 
+[package.metadata.release]
+release = false
+
 [lib]
 crate-type = ["cdylib"]
 
