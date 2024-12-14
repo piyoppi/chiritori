@@ -55,15 +55,15 @@ jobs:
       - name: compress
         if: matrix.target.os != 'windows-latest'
         run: |
-          mv target/${{ matrix.target.target }}/release/chiritori .
-          tar -czf chiritori-${{ matrix.target.name }}.tar.gz ./chiritori
+          tar -czf chiritori-${{ matrix.target.name }}.tar.gz -C target/${{ matrix.target.target }}/release chiritori
 
       - name: compress
         if: matrix.target.os == 'windows-latest'
         run: |
-          mv target/${{ matrix.target.target }}/release/chiritori.exe .
+          cd target/${{ matrix.target.target }}/release
           7z a chiritori-${{ matrix.target.name }}.zip ./chiritori.exe
-
+          cd -
+          mv target/${{ matrix.target.target }}/release/chiritori-${{ matrix.target.name }}.zip .
 
       - name: Upload Release Asset
         if: matrix.target.os != 'windows-latest'
