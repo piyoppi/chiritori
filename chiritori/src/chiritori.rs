@@ -1,7 +1,7 @@
 use crate::{
     code::{
         formatter::{self, BlockFormatter, Formatter},
-        list::build_list,
+        list::{build_list, build_pretty_string},
         remover::{
             self,
             marker::{
@@ -18,6 +18,7 @@ use crate::{
             removal_evaluator::RemovalEvaluator,
             Remover,
         },
+        utils::line_map::build_line_map,
     },
     parser, tokenizer,
 };
@@ -25,6 +26,7 @@ use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
 };
+use thiserror::Error;
 
 pub struct ChiritoriConfiguration {
     pub time_limited_configuration: TimeLimitedConfiguration,
@@ -40,6 +42,17 @@ pub struct TimeLimitedConfiguration {
 pub struct RemovalMarkerConfiguration {
     pub tag_name: String,
     pub targets: HashSet<String>,
+}
+
+pub enum ListFormat {
+    PrettyString,
+    JSON,
+}
+
+#[derive(Error, Debug)]
+pub enum ListError {
+    #[error("Failed to serialize JSON.")]
+    JSONSerializeError,
 }
 
 pub fn clean(
@@ -67,7 +80,8 @@ pub fn list(
     content: Rc<String>,
     delimiters: (String, String),
     config: ChiritoriConfiguration,
-) -> String {
+    format: ListFormat,
+) -> Result<String, ListError> {
     let (delimiter_start, delimiter_end) = delimiters;
     let tokens = tokenizer::tokenize(&content, &delimiter_start, &delimiter_end);
 
@@ -78,23 +92,34 @@ pub fn list(
         .into_iter()
         .map(|v| (v, true))
         .collect();
+    let line_map = build_line_map(&content);
 
-    build_list(&content, &markers)
+    match format {
+        ListFormat::PrettyString => Ok(build_pretty_string(&content, &markers, Some(&line_map))),
+        ListFormat::JSON => serde_json::to_string(&build_list(&content, &markers, Some(&line_map)))
+            .map_err(|_| ListError::JSONSerializeError),
+    }
 }
 
 pub fn list_all(
     content: Rc<String>,
     delimiters: (String, String),
     config: ChiritoriConfiguration,
-) -> String {
+    format: ListFormat,
+) -> Result<String, ListError> {
     let (delimiter_start, delimiter_end) = delimiters;
     let tokens = tokenizer::tokenize(&content, &delimiter_start, &delimiter_end);
 
     let parsed = parser::parse(&tokens);
     let remover = build_remover(config, content.clone());
     let markers = remover.build_remove_marker_all(&parsed);
+    let line_map = build_line_map(&content);
 
-    build_list(&content, &markers)
+    match format {
+        ListFormat::PrettyString => Ok(build_pretty_string(&content, &markers, Some(&line_map))),
+        ListFormat::JSON => serde_json::to_string(&build_list(&content, &markers, Some(&line_map)))
+            .map_err(|_| ListError::JSONSerializeError),
+    }
 }
 
 fn build_remover(config: ChiritoriConfiguration, content: Rc<String>) -> Remover {
@@ -316,11 +341,17 @@ console.log("Temporary code while feature2 is not released")
 
         let config = create_test_config();
         let delimiters = (String::from("/* <"), String::from("> */"));
-        let result = list_all(input_content.into(), delimiters, config)
-            .replace("\x1b[0m", "")
-            .replace("\x1b[31m", "")
-            .replace("\x1b[32m", "")
-            .replace("\x1b[33m", "");
+        let result = list_all(
+            input_content.into(),
+            delimiters,
+            config,
+            ListFormat::PrettyString,
+        )
+        .unwrap()
+        .replace("\x1b[0m", "")
+        .replace("\x1b[31m", "")
+        .replace("\x1b[32m", "")
+        .replace("\x1b[33m", "");
 
         assert_eq!(result, expected_content);
     }
@@ -348,11 +379,17 @@ console.log("Temporary code while feature2 is not released")
 
         let config = create_test_config();
         let delimiters = (String::from("/* <"), String::from("> */"));
-        let result = list(input_content.into(), delimiters, config)
-            .replace("\x1b[0m", "")
-            .replace("\x1b[31m", "")
-            .replace("\x1b[32m", "")
-            .replace("\x1b[33m", "");
+        let result = list(
+            input_content.into(),
+            delimiters,
+            config,
+            ListFormat::PrettyString,
+        )
+        .unwrap()
+        .replace("\x1b[0m", "")
+        .replace("\x1b[31m", "")
+        .replace("\x1b[32m", "")
+        .replace("\x1b[33m", "");
 
         assert_eq!(result, expected_content);
     }
