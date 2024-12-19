@@ -1,88 +1,88 @@
 
 -------- [ 1 ]  Ready  --------
-  _start
-  /* < time-limited to="2020-12-31 23:59:59" > */
-    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [1]');
-  /* < /time-limited > */
-                        ‾end
+           _start
+      3 |  /* < time-limited to="2020-12-31 23:59:59" > */
+      4 |    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [1]');
+      5 |  /* < /time-limited > */
+                                 ‾end
 -------- [ 2 ]  Ready  --------
-  _start
-  /* < time-limited to="2020-12-31 23:59:59" > */
-    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [3]');
-  /* < /time-limited > */
-                        ‾end
+           _start
+     11 |  /* < time-limited to="2020-12-31 23:59:59" > */
+     12 |    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [3]');
+     13 |  /* < /time-limited > */
+                                 ‾end
 -------- [ 3 ]  Ready  --------
-  _start
-  /* < time-limited to="2020-12-31 23:59:59" > */
-    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [4]');
-    /* < time-limited to="2099-12-31 23:59:59" > */
-      console.log('📌This code will be removed after 2099-12-31T23:59:59.999Z [5]');
-    /* < /time-limited > */
-  /* < /time-limited > */
-                        ‾end
+           _start
+     17 |  /* < time-limited to="2020-12-31 23:59:59" > */
+     18 |    console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [4]');
+     19 |    /* < time-limited to="2099-12-31 23:59:59" > */
+     20 |      console.log('📌This code will be removed after 2099-12-31T23:59:59.999Z [5]');
+     21 |    /* < /time-limited > */
+     22 |  /* < /time-limited > */
+                                 ‾end
 -------- [ 4 ]  Ready  --------
-    _start
-    /* < time-limited to="2020-12-31 23:59:59" > */
-      console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [7]');
-    /* < /time-limited > */
-                          ‾end
+             _start
+     26 |    /* < time-limited to="2020-12-31 23:59:59" > */
+     27 |      console.log('🧹This code will be removed after 2020-12-31T23:59:59.999Z [7]');
+     28 |    /* < /time-limited > */
+                                   ‾end
 -------- [ 5 ]  Ready  --------
-  _start
-  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
-  if (isReleased) {
-                  ‾end
+           _start
+     35 |  /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+     36 |  if (isReleased) {
+                           ‾end
 -------- [ 6 ]  Ready  --------
-_start
-  }
-  /* < /time-limited > */
-                        ‾end
+         _start
+     40 |  }
+     41 |  /* < /time-limited > */
+                                 ‾end
 -------- [ 7 ]  Ready  --------
-    _start
-    /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
-    if (isReleased) {
-                    ‾end
+             _start
+     44 |    /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+     45 |    if (isReleased) {
+                             ‾end
 -------- [ 8 ]  Ready  --------
-_start
-    }
-    /* < /time-limited > */
-                          ‾end
+         _start
+     48 |    }
+     49 |    /* < /time-limited > */
+                                   ‾end
 -------- [ 9 ]  Ready  --------
-_start
-/* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
-  if (isReleased) {
-                  ‾end
+         _start
+     52 |/* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+     53 |  if (isReleased) {
+                           ‾end
 -------- [ 10 ]  Ready  --------
-_start
-  }
-/* < /time-limited > */
-                      ‾end
+         _start
+     55 |  }
+     56 |/* < /time-limited > */
+                               ‾end
 -------- [ 11 ]  Ready  --------
-        _start
-        /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
-  if (isReleased) {
-                  ‾end
+                 _start
+     66 |        /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+     67 |  if (isReleased) {
+                           ‾end
 -------- [ 12 ]  Ready  --------
-_start
-  }
-        /* < /time-limited > */
-                              ‾end
+         _start
+     69 |  }
+     70 |        /* < /time-limited > */
+                                       ‾end
 -------- [ 13 ]  Ready  --------
-  _start
-  /* < time-limited to="2001-12-31 23:59:59"
-   * c="You can write your comments here."
-   * > */
-    console.log('[13]');
-  /* < /time-limited > */
-                        ‾end
+           _start
+     79 |  /* < time-limited to="2001-12-31 23:59:59"
+     80 |   * c="You can write your comments here."
+     81 |   * > */
+     82 |    console.log('[13]');
+     83 |  /* < /time-limited > */
+                                 ‾end
 -------- [ 14 ]  Ready  --------
-  _start
-  /* < time-limited to="2020-12-31 23:59:59" unwrap-block
-   * c="You can write your comments here."
-   * > */
-  if (isReleased) {
-                  ‾end
+           _start
+     85 |  /* < time-limited to="2020-12-31 23:59:59" unwrap-block
+     86 |   * c="You can write your comments here."
+     87 |   * > */
+     88 |  if (isReleased) {
+                           ‾end
 -------- [ 15 ]  Ready  --------
-_start
-  }
-  /* < /time-limited > */
-                        ‾end
+         _start
+     90 |  }
+     91 |  /* < /time-limited > */
+                                 ‾end
