@@ -186,6 +186,36 @@ pub struct ListItem {
     current_status: ItemStatus,
 }
 
+pub fn build_list(
+    content: &str,
+    markers: &[(RemoveMarker, bool)],
+    line_map: Option<&Vec<usize>>,
+) -> Vec<ListItem> {
+    markers
+        .iter()
+        .map(|((range, _), is_removal)| {
+            let line_range = line_map.map(|m| get_line_range(m, range));
+            let text = build_pretty_string_item(
+                content,
+                range.start,
+                range.end,
+                *is_removal,
+                false,
+                line_range,
+            );
+
+            ListItem {
+                line_range,
+                text,
+                current_status: match is_removal {
+                    true => ItemStatus::Ready,
+                    false => ItemStatus::Pending,
+                },
+            }
+        })
+        .collect()
+}
+
 fn get_line_range(line_map: &[usize], range: &Range<usize>) -> (usize, usize) {
     // Subtract one extra line number because of a line break at the end.
     //
@@ -307,6 +337,31 @@ eeeeeee";
 
     #[test]
     fn test_build_list() {
+        //             0123456789012345678
+        let content = "aaaa+bbbb+cccc+dddd".replace('+', "\n");
+        let markers = [((1..2, None), true), ((7..14, None), false)];
+        let line_map = build_line_map(&content);
+
+        assert_eq!(
+            build_list(&content, &markers, Some(&line_map)),
+            vec![
+                ListItem {
+                    line_range: Some((1, 1)),
+                    text: "          _start\n      1 |aaaa\n          ‾end".to_string(),
+                    current_status: ItemStatus::Ready
+                },
+                ListItem {
+                    line_range: Some((2, 3)),
+                    text: "           _start\n      2 |bbbb\n      3 |cccc\n            ‾end"
+                        .to_string(),
+                    current_status: ItemStatus::Pending
+                },
+            ]
+        )
+    }
+
+    #[test]
+    fn test_build_pretty_string() {
         //             0123456789012345678
         let content = "aaaa+bbbb+cccc+dddd".replace('+', "\n");
         let markers = [((1..2, None), true), ((7..12, None), false)];
