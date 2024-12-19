@@ -1,6 +1,6 @@
 extern crate chiritori;
 use chiritori::chiritori::{
-    clean, list, list_all, ChiritoriConfiguration, RemovalMarkerConfiguration,
+    clean, list, list_all, ChiritoriConfiguration, ListFormat, RemovalMarkerConfiguration,
     TimeLimitedConfiguration,
 };
 use clap::Parser;
@@ -60,6 +60,10 @@ struct Args {
     /// List source code to be removed or pending
     #[arg(long, long)]
     list_all: bool,
+
+    /// Output the list in JSON format
+    #[arg(long)]
+    list_json: bool,
 }
 
 fn main() {
@@ -111,9 +115,21 @@ fn main() {
     let content = Rc::new(content);
 
     let output = if args.list {
-        list(content, (args.delimiter_start, args.delimiter_end), config)
+        list(
+            content,
+            (args.delimiter_start, args.delimiter_end),
+            config,
+            convert_list_format(args.list_json),
+        )
+        .unwrap()
     } else if args.list_all {
-        list_all(content, (args.delimiter_start, args.delimiter_end), config)
+        list_all(
+            content,
+            (args.delimiter_start, args.delimiter_end),
+            config,
+            convert_list_format(args.list_json),
+        )
+        .unwrap()
     } else {
         clean(content, (args.delimiter_start, args.delimiter_end), config)
     };
@@ -132,4 +148,11 @@ fn load_removal_marker_target_names(filename: String) -> Vec<String> {
     let reader = BufReader::new(f);
 
     reader.lines().map_while(Result::ok).collect::<Vec<_>>()
+}
+
+fn convert_list_format(list_json: bool) -> ListFormat {
+    match list_json {
+        true => ListFormat::JSON,
+        false => ListFormat::PrettyString,
+    }
 }
