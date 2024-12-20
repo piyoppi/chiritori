@@ -95,6 +95,8 @@ Options:
           List source code to be removed
       --list-all
           List source code to be removed or pending
+      --list-json
+          Output the list in JSON format
   -h, --help
           Print help
   -V, --version
