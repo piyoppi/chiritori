@@ -12,6 +12,9 @@ release = false
 
 [dependencies]
 chrono = "0.4.34"
+serde = { version = "1.0.216", features = ["derive"] }
+serde_json = "1.0.133"
+thiserror = "2"
 
 [dev-dependencies]
 rstest = "0.23.0"
