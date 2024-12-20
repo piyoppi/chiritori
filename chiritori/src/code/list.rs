@@ -182,7 +182,7 @@ pub enum ItemStatus {
 #[derive(Debug, PartialEq, Serialize)]
 pub struct ListItem {
     line_range: Option<(usize, usize)>,
-    text: String,
+    annotated_code_block: String,
     current_status: ItemStatus,
 }
 
@@ -206,7 +206,7 @@ pub fn build_list(
 
             ListItem {
                 line_range,
-                text,
+                annotated_code_block: text,
                 current_status: match is_removal {
                     true => ItemStatus::Ready,
                     false => ItemStatus::Pending,
@@ -347,13 +347,15 @@ eeeeeee";
             vec![
                 ListItem {
                     line_range: Some((1, 1)),
-                    text: "          _start\n      1 |aaaa\n          ‾end".to_string(),
+                    annotated_code_block: "          _start\n      1 |aaaa\n          ‾end"
+                        .to_string(),
                     current_status: ItemStatus::Ready
                 },
                 ListItem {
                     line_range: Some((2, 3)),
-                    text: "           _start\n      2 |bbbb\n      3 |cccc\n            ‾end"
-                        .to_string(),
+                    annotated_code_block:
+                        "           _start\n      2 |bbbb\n      3 |cccc\n            ‾end"
+                            .to_string(),
                     current_status: ItemStatus::Pending
                 },
             ]
