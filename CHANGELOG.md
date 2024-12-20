@@ -1,5 +1,12 @@
 # Chiritori Changelog
 
+## 1.4.0
+
+### Features
+
+- Add `--list-json` option. If this option is enabled, the output format is JSON for the list.
+- Display the column position in the list of code blocks (when the `--list` or `--list-all` option is enabled).
+
 ## 1.3.0
 
 ### Features
