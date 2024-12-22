@@ -1,5 +1,5 @@
 use chiritori::chiritori::{
-    ChiritoriConfiguration, RemovalMarkerConfiguration, TimeLimitedConfiguration,
+    ChiritoriConfiguration, RemovalMarkerConfiguration, TimeLimitedConfiguration, ListFormat
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, rc::Rc};
@@ -68,7 +68,7 @@ pub fn list_all(
 ) -> String {
     let content = Rc::new(content);
 
-    chiritori::chiritori::list_all(content, (delimiter_start, delimiter_end), config.into())
+    chiritori::chiritori::list_all(content, (delimiter_start, delimiter_end), config.into(), ListFormat::PrettyString).unwrap()
 }
 
 #[wasm_bindgen]
