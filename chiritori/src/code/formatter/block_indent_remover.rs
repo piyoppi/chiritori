@@ -107,7 +107,7 @@ mod tests {
         // | ..piyo+ |    | +       |    | +       |
         // | }+      |    | bar     |    | bar     |
         // | </rm>+  |    |         |    |         |
-        // | bar+    |    |         |    |         |
+        // | bar     |    |         |    |         |
         // +---------+    +---------+    +---------+
         //
         //                      10        20
@@ -115,6 +115,26 @@ mod tests {
         //             |   ^<>     <>     ^
         let content = "foo++  fuga+  piyo++bar".replace('+', "\n");
         assert_eq!(remover.format(&content, 4, 19), vec![5..7, 12..14]);
+
+        //   original       removed       formatted
+        // +----------+    +---------+    +---------+
+        // | _foo+    |    | _foo+   |    | _foo+   |
+        // | _<rm>+   |    | _+      |    | _+      |
+        // | _if {+   |    | __fuga+ |    | _fuga+  |
+        // | __fuga+  | => | __piyo+ | => | _piyo+  |
+        // | __piyo+  |    | _+      |    | _+      |
+        // | _}+      |    | _bar    |    | _bar    |
+        // | _</rm>+  |    |         |    |         |
+        // | _bar     |    |         |    |         |
+        // +----------+    +---------+    +---------+
+        //
+        //                      10        20
+        //             012345678901234567890123456
+        //             |     ^ *      *      ^
+        let content = "_foo+_+__fuga+__piyo+_+_bar"
+            .replace('+', "\n")
+            .replace('_', "\t");
+        assert_eq!(remover.format(&content, 6, 22), vec![8..9, 15..16]);
 
         //   original       removed       formatted
         // +---------+    +---------+    +---------+
