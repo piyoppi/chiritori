@@ -1,6 +1,6 @@
 [package]
 name = "chiritori-cli"
-version = "1.4.0"
+version = "1.4.1"
 description = "A tool for removing time-limited source code"
 repository = "https://github.com/piyoppi/chiritori"
 license = "MIT"

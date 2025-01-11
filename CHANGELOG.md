@@ -1,5 +1,11 @@
 # Chiritori Changelog
 
+## 1.4.1
+
+## Buf fixes
+
+- Tab indentation is ignored when formatting ([#37](https://github.com/piyoppi/chiritori/pull/37))
+
 ## 1.4.0
 
 ### Features
