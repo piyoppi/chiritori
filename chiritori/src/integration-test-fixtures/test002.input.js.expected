@@ -1,0 +1,11 @@
+/*
+ * Tab indent
+ */
+async function main() {
+
+	console.log('bar')
+
+	console.log('📌This code is unconditionally executed after 2020-12-31T23:59:59.999Z [8]');
+	const awesomeFeature = new awesomeFeature()
+	awesomeFeature.run();
+}

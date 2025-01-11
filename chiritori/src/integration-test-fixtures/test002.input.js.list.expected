@@ -1,0 +1,17 @@
+
+-------- [ 1 ]  Ready  --------
+             _start
+      5 |    /* < time-limited to="2020-12-31 23:59:59" > */
+      6 |    console.log('foo')
+      7 |    /* < /time-limited > */
+                                   ‾end
+-------- [ 2 ]  Ready  --------
+             _start
+     11 |    /* < time-limited to="2020-12-31 23:59:59" unwrap-block > */
+     12 |    if (isReleased) {
+                             ‾end
+-------- [ 3 ]  Ready  --------
+         _start
+     16 |    }
+     17 |    /* < /time-limited > */
+                                   ‾end
