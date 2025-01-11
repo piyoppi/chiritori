@@ -1,3 +1,5 @@
+use crate::code::utils::blank_counter;
+
 use super::{
     remover::RemoveMarker,
     utils::{
@@ -21,6 +23,8 @@ const HEAD_END: &str = "--------";
 const REMOVAL_HEAD: &str = " ]  Ready  ";
 const PENDING_REMOVAL_HEAD: &str = " ] Pending ";
 const LINE_COLUMN_WIDTH: usize = 9;
+
+const TABSPACE: &str = "    ";
 
 pub fn build_pretty_string_item(
     content: &str,
@@ -86,7 +90,7 @@ pub fn build_pretty_string_item(
     removed.push_str(&content[color_end..line_end]);
     removed.push('\n');
 
-    let (code_block, column_ofs) = if let Some(line_range) = line_range {
+    let (code_block, line_number_ofs) = if let Some(line_range) = line_range {
         let mut line_iter = removed.lines();
         (
             &(line_range.0..=line_range.1)
@@ -106,27 +110,31 @@ pub fn build_pretty_string_item(
     };
 
     let marker_start_ofs_len = start - line_start;
+    let marker_start_tab_len = blank_counter::count_tabspace(&content[line_start..start]);
     let marker_end_ofs_len = end - line_end_start_pos - 1;
+    let marker_end_tab_len = blank_counter::count_tabspace(&content[line_end_start_pos..end]);
     let mut result = String::with_capacity(
-        (marker_start_ofs_len + column_ofs + marker_start_color.len() + MARKER_START.len() + reset_color.len())     // start marker
-        + 1                                                                                                         // \n
-        + removed.len()                                                                                             // code block
-        + 1                                                                                                         // \n
-        + (marker_end_ofs_len + column_ofs + marker_end_color.len() + MARKER_END.len() + reset_color.len()), // end marker
+        (marker_start_ofs_len + line_number_ofs - marker_start_tab_len + (marker_start_tab_len * TABSPACE.len())  + marker_start_color.len() + MARKER_START.len() + reset_color.len())    // start marker
+        + 1                                                                                                                                                                               // \n
+        + removed.len()                                                                                                                                                                   // code block
+        + 1                                                                                                                                                                               // \n
+        + (marker_end_ofs_len + line_number_ofs - marker_end_tab_len + (marker_end_tab_len * TABSPACE.len()) + marker_end_color.len() + MARKER_END.len() + reset_color.len()), // end marker
     );
 
     // Print a start marker
-    result.push_str(&" ".repeat(marker_start_ofs_len + column_ofs));
+    result.push_str(&TABSPACE.to_string().repeat(marker_start_tab_len));
+    result.push_str(&" ".repeat(line_number_ofs + marker_start_ofs_len - marker_start_tab_len));
     result.push_str(marker_start_color);
     result.push_str(MARKER_START);
     result.push_str(reset_color);
     result.push('\n');
 
     // Print a code block
-    result.push_str(code_block);
+    result.push_str(&code_block.replace("\t", TABSPACE));
 
     // Print an end marker
-    result.push_str(&" ".repeat(marker_end_ofs_len + column_ofs));
+    result.push_str(&TABSPACE.to_string().repeat(marker_end_tab_len));
+    result.push_str(&" ".repeat(marker_end_ofs_len + line_number_ofs - marker_end_tab_len));
     result.push_str(marker_end_color);
     result.push_str(MARKER_END);
     result.push_str(reset_color);
