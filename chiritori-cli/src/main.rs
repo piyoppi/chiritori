@@ -40,6 +40,10 @@ struct Args {
     #[arg(long, default_value = "")]
     time_limited_current: String,
 
+    /// The cleanup unbounded time-limited tag
+    #[arg(long)]
+    time_limited_cleanup_unbounded: bool,
+
     /// The tag name for removal-marker
     #[arg(long, default_value = "removal-marker")]
     removal_marker_tag_name: String,
@@ -70,19 +74,17 @@ fn main() {
     let args = Args::parse();
 
     let mut content = String::new();
-    if args.filename.is_none() {
-        if atty::isnt(atty::Stream::Stdin) {
-            std::io::stdin()
-                .read_to_string(&mut content)
-                .expect("something went wrong reading the file");
-        } else {
-            println!("No input file or stdin. More information: --help");
-            std::process::exit(1);
-        }
-    } else {
-        let mut f = File::open(args.filename.unwrap()).expect("file not found");
+    if let Some(filename) = args.filename {
+        let mut f = File::open(filename).expect("file not found");
         f.read_to_string(&mut content)
             .expect("something went wrong reading the file");
+    } else if atty::isnt(atty::Stream::Stdin) {
+        std::io::stdin()
+            .read_to_string(&mut content)
+            .expect("something went wrong reading the file");
+    } else {
+        println!("No input file or stdin. More information: --help");
+        std::process::exit(1);
     }
 
     let removal_marker_target_names_from_file =
@@ -105,6 +107,7 @@ fn main() {
                 .time_limited_current
                 .parse::<chrono::DateTime<chrono::Local>>()
                 .unwrap_or(chrono::Local::now()),
+            cleanup_unbounded: args.time_limited_cleanup_unbounded,
         },
         removal_marker_configuration: RemovalMarkerConfiguration {
             tag_name: args.removal_marker_tag_name,

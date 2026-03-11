@@ -28,6 +28,7 @@ pub struct WasmChiritoriTimeLimitedConfiguration {
     pub tag_name: String,
     pub time_offset: String,
     pub current: Option<String>,
+    pub cleanup_unbounded: bool
 }
 
 impl From<WasmChiritoriTimeLimitedConfiguration> for TimeLimitedConfiguration {
@@ -39,6 +40,7 @@ impl From<WasmChiritoriTimeLimitedConfiguration> for TimeLimitedConfiguration {
                 .current
                 .and_then(|v| v.parse::<chrono::DateTime<chrono::Local>>().ok())
                 .unwrap_or(chrono::Local::now()),
+            cleanup_unbounded: val.cleanup_unbounded
         }
     }
 }

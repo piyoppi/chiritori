@@ -1,8 +1,14 @@
 # Chiritori Changelog
 
+## 1.5.0
+
+### Features
+
+- Add `--time-limited-cleanup-unbounded` option to clean up time-limited tags that have only a `from` attribute and no `to` attribute
+
 ## 1.4.1
 
-## Buf fixes
+## Bug fixes
 
 - Tab indentation is ignored when formatting ([#37](https://github.com/piyoppi/chiritori/pull/37))
 
