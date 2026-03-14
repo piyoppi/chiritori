@@ -46,7 +46,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chiritori"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "chrono",
  "serde",
@@ -56,7 +56,7 @@ dependencies = [
 
 [[package]]
 name = "chiritori-wasm"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chiritori",
  "chrono",

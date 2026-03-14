@@ -15,8 +15,7 @@ use crate::{
                 },
                 factory::RemoveStrategies,
             },
-            removal_evaluator::RemovalEvaluator,
-            Remover,
+            CleanupEvaluators, RemovalEvaluators, Remover,
         },
         utils::line_map::build_line_map,
     },
@@ -37,6 +36,7 @@ pub struct TimeLimitedConfiguration {
     pub tag_name: String,
     pub time_offset: String,
     pub current: chrono::DateTime<chrono::Local>,
+    pub cleanup_unbounded: bool,
 }
 
 pub struct RemovalMarkerConfiguration {
@@ -123,13 +123,13 @@ pub fn list_all(
 }
 
 fn build_remover(config: ChiritoriConfiguration, content: Rc<String>) -> Remover {
-    let mut builder_map: HashMap<String, Box<dyn RemovalEvaluator>> = HashMap::new();
+    let mut builder_map: RemovalEvaluators = HashMap::new();
     builder_map.insert(
-        config.time_limited_configuration.tag_name,
+        config.time_limited_configuration.tag_name.clone(),
         Box::new(
             remover::removal_evaluator::time_limited_evaluator::TimeLimitedEvaluator {
                 current_time: config.time_limited_configuration.current,
-                time_offset: config.time_limited_configuration.time_offset,
+                time_offset: config.time_limited_configuration.time_offset.clone(),
             },
         ),
     );
@@ -154,7 +154,21 @@ fn build_remover(config: ChiritoriConfiguration, content: Rc<String>) -> Remover
         ),
     ];
 
-    Remover::new(builder_map, remove_strategy_map)
+    let mut cleanup_evaluator_map: CleanupEvaluators = HashMap::new();
+
+    if config.time_limited_configuration.cleanup_unbounded {
+        cleanup_evaluator_map.insert(
+            config.time_limited_configuration.tag_name.clone(),
+            Box::new(
+                remover::cleanup_evaluator::time_limited_evaluator::TimeLimitedEvaluator {
+                    current_time: config.time_limited_configuration.current,
+                    time_offset: config.time_limited_configuration.time_offset.clone(),
+                },
+            ),
+        );
+    }
+
+    Remover::new(builder_map, remove_strategy_map, cleanup_evaluator_map)
 }
 
 fn build_formatters() -> Vec<Box<dyn Formatter>> {
@@ -181,6 +195,7 @@ mod tests {
                 tag_name: String::from("time-limited"),
                 current: Local::now(),
                 time_offset: String::from("+00:00"),
+                cleanup_unbounded: true,
             },
             removal_marker_configuration: RemovalMarkerConfiguration {
                 tag_name: String::from("marker"),

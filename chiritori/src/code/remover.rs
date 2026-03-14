@@ -1,10 +1,14 @@
+pub mod cleanup_evaluator;
 pub mod marker;
 pub mod removal_evaluator;
 
+use crate::code::remover::cleanup_evaluator::CleanupEvaluator;
+use crate::code::remover::marker::cleaner::clean;
 use crate::element_parser::Element;
 use crate::parser;
 use crate::parser::ContentPart;
-use marker::factory::{create, RemovableRange, RemoveStrategies};
+use marker::factory::{create, RemoveStrategies};
+use marker::remover::RemovableRange;
 use removal_evaluator::RemovalEvaluator;
 use std::collections::HashMap;
 use std::ops::Range;
@@ -12,7 +16,8 @@ use std::ops::Range;
 pub type RemoveMarker = (Range<usize>, Option<usize>);
 pub type RemovedMarker = (usize, Option<usize>);
 
-type RemovalEvaluators = HashMap<String, Box<dyn RemovalEvaluator>>;
+pub type RemovalEvaluators = HashMap<String, Box<dyn RemovalEvaluator>>;
+pub type CleanupEvaluators = HashMap<String, Box<dyn CleanupEvaluator>>;
 
 struct RemovalRangeTree {
     range: RemovableRange,
@@ -22,13 +27,19 @@ struct RemovalRangeTree {
 pub struct Remover {
     removal_evaluators: RemovalEvaluators,
     remove_strategies: RemoveStrategies,
+    cleanup_evaluators: CleanupEvaluators,
 }
 
 impl Remover {
-    pub fn new(removal_evaluators: RemovalEvaluators, remove_strategies: RemoveStrategies) -> Self {
+    pub fn new(
+        removal_evaluators: RemovalEvaluators,
+        remove_strategies: RemoveStrategies,
+        cleanup_evaluators: CleanupEvaluators,
+    ) -> Self {
         Self {
             removal_evaluators,
             remove_strategies,
+            cleanup_evaluators,
         }
     }
 
@@ -137,6 +148,14 @@ impl Remover {
                                 } else {
                                     None
                                 }
+                            })
+                            .or_else(|| {
+                                self.cleanup_evaluators.get(el.start_element.name).and_then(
+                                    |evaluator| match evaluator.is_cleanup(&el.start_element) {
+                                        true => Some((clean(el), true)),
+                                        false => None,
+                                    },
+                                )
                             })
                     };
 
@@ -293,7 +312,11 @@ mod tests {
         let tokens = tokenizer::tokenize(content, "<", ">");
         let contents = parser::parse(&tokens);
         let content = Rc::new(content.to_string());
-        let remover = Remover::new(removal_evaluators, initialize_remove_strategy(content));
+        let remover = Remover::new(
+            removal_evaluators,
+            initialize_remove_strategy(content),
+            HashMap::new(),
+        );
         assert_eq!(remover.build_remove_marker(&contents), expected);
     }
 
@@ -317,7 +340,11 @@ mod tests {
         let tokens = tokenizer::tokenize(content, "<", ">");
         let contents = parser::parse(&tokens);
         let content = Rc::new(content.to_string());
-        let remover = Remover::new(removal_evaluators, initialize_remove_strategy(content));
+        let remover = Remover::new(
+            removal_evaluators,
+            initialize_remove_strategy(content),
+            HashMap::new(),
+        );
         assert_eq!(remover.build_remove_marker_all(&contents), expected);
     }
 
@@ -343,6 +370,7 @@ mod tests {
         let remover = Remover::new(
             initialize_removal_evaluators(),
             initialize_remove_strategy(Rc::clone(&content)),
+            HashMap::new(),
         );
         let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
@@ -370,6 +398,7 @@ foo
         let remover = Remover::new(
             initialize_removal_evaluators(),
             initialize_remove_strategy(Rc::clone(&content)),
+            HashMap::new(),
         );
         let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
@@ -398,6 +427,7 @@ foo
         let remover = Remover::new(
             initialize_removal_evaluators(),
             initialize_remove_strategy(Rc::clone(&content)),
+            HashMap::new(),
         );
         let (removed, _) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<!--", "-->")),
@@ -421,6 +451,7 @@ if (foo) {
         let remover = Remover::new(
             initialize_removal_evaluators(),
             initialize_remove_strategy(Rc::clone(&content)),
+            HashMap::new(),
         );
         let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "/*", "*/")),
@@ -447,6 +478,7 @@ if (foo) {
         let remover = Remover::new(
             initialize_removal_evaluators(),
             initialize_remove_strategy(Rc::clone(&content)),
+            HashMap::new(),
         );
         let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<", ">")),
@@ -470,6 +502,7 @@ if (foo) {
         let remover = Remover::new(
             initialize_removal_evaluators(),
             initialize_remove_strategy(Rc::clone(&content)),
+            HashMap::new(),
         );
         let (removed, markers) = remover.remove(
             parser::parse(&tokenizer::tokenize(&content, "<", ">")),
@@ -488,6 +521,36 @@ if (foo) {
                 (145..152, Some(1)),
             ]
         );
+    }
+
+    #[rstest]
+    //      0         1         2         3         4
+    //      0123456789012345678901234567890123456789012345
+    //          <------------------------------>    <--->
+    #[case("foo<tl from='2000-01-01 00:00:00'>bar</tl>baz", vec![(3..34, Some(1)), (37..42, Some(0))])]
+    #[case("foo<tl from='2099-01-01 00:00:00'>bar</tl>baz", vec![])]
+    #[case("foo<tl from='2000-01-01 00:00:00' to='2099-01-01 00:00:00'>bar</tl>baz", vec![])]
+    #[case("foo<baz>a", vec![])]
+    fn test_cleanup_marker(#[case] content: &str, #[case] expected: Vec<RemoveMarker>) {
+        let mut cleanup_evaluators: CleanupEvaluators = HashMap::new();
+        cleanup_evaluators.insert(
+            String::from("tl"),
+            Box::new(
+                cleanup_evaluator::time_limited_evaluator::TimeLimitedEvaluator {
+                    current_time: chrono::Local::now(),
+                    time_offset: "+00:00".to_string(),
+                },
+            ),
+        );
+        let tokens = tokenizer::tokenize(content, "<", ">");
+        let contents = parser::parse(&tokens);
+        let content = Rc::new(content.to_string());
+        let remover = Remover::new(
+            HashMap::new(),
+            initialize_remove_strategy(content),
+            cleanup_evaluators,
+        );
+        assert_eq!(remover.build_remove_marker(&contents), expected);
     }
 
     #[test]
