@@ -195,7 +195,7 @@ mod tests {
                 tag_name: String::from("time-limited"),
                 current: Local::now(),
                 time_offset: String::from("+00:00"),
-                cleanup_unbounded: false,
+                cleanup_unbounded: true,
             },
             removal_marker_configuration: RemovalMarkerConfiguration {
                 tag_name: String::from("marker"),

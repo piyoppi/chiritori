@@ -1,0 +1,25 @@
+
+-------- [ 1 ] Pending --------
+           _start
+      4 |  /* < time-limited from="2020-01-01 00:00:00" > */
+      5 |  console.log('cleanup-target: past from, no to [1]');
+      6 |  /* < /time-limited > */
+                                 ‾end
+-------- [ 2 ]  Ready  --------
+           _start
+     12 |  /* < time-limited to="2020-12-31 23:59:59" > */
+     13 |  console.log('removal-target: past to [3]');
+     14 |  /* < /time-limited > */
+                                 ‾end
+-------- [ 3 ] Pending --------
+           _start
+      8 |  /* < time-limited from="2099-01-01 00:00:00" > */
+      9 |  console.log('no-cleanup: future from, no to [2]');
+     10 |  /* < /time-limited > */
+                                 ‾end
+-------- [ 4 ] Pending --------
+           _start
+     16 |  /* < time-limited from="2020-01-01 00:00:00" to="2099-12-31 23:59:59" > */
+     17 |  console.log('no-cleanup: has both from and to [4]');
+     18 |  /* < /time-limited > */
+                                 ‾end
